@@ -17,7 +17,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
         with:
@@ -30,9 +29,9 @@ jobs:
         run: npm install
       - name: Run Sketch Fusion
         run: npm start
-      - name: Push changes in output file to repo
-        uses: actions-x/commit@v2
-        with:
-          email: developer@sketch.com
-          name: Sketch Developer
-          files: output.sketch
+      # - name: Push changes in output file to repo
+      #   uses: actions-x/commit@v2
+      #   with:
+      #     email: developer@sketch.com
+      #     name: Sketch Developer
+      #     files: output.sketch
