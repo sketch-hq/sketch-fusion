@@ -17,9 +17,16 @@ To use Sketch Fusion, you need these files:
 
 Sketch Fusion will ignore any extra information in the theme file.
 
-Once you have the files, you can run the following command:
+Once you have the files, you can run the following commands:
 
 ```bash
 npm install
+```
+
+to install the dependencies. And then
+
+```bash
 npm start
 ```
+
+to run the tool and generate the output.
