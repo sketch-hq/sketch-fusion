@@ -10,9 +10,9 @@ let options = {
   reuseStyleID: true,
 }
 
-const sourceFile = '../source.sketch'
-const themeFile = '../theme.sketch'
-const outputFile = '../output.sketch'
+const sourceFile = resolve(__dirname, '../source.sketch')
+const themeFile = resolve(__dirname, '../theme.sketch')
+const outputFile = resolve(__dirname, '../output.sketch')
 
 if (fs.existsSync(outputFile) && options.reuseOutput == false) {
   fs.unlinkSync(outputFile)
@@ -76,14 +76,18 @@ function mergeDocuments(
     sourceZip.extractAllTo(resolve(__dirname, '../tmp/source'), true)
     const outputZip = new AdmZip(outputFile)
     outputZip.extractAllTo(resolve(__dirname, '../tmp/output'), true)
-    fs.renameSync(
-      resolve(__dirname, '../tmp/source/fonts'),
-      resolve(__dirname, '../tmp/output/fonts')
-    )
-    fs.renameSync(
-      resolve(__dirname, '../tmp/source/images'),
-      resolve(__dirname, '../tmp/output/images')
-    )
+    if (fs.existsSync(resolve(__dirname, '../tmp/source/fonts'))) {
+      fs.renameSync(
+        resolve(__dirname, '../tmp/source/fonts'),
+        resolve(__dirname, '../tmp/output/fonts')
+      )
+    }
+    if (fs.existsSync(resolve(__dirname, '../tmp/source/images'))) {
+      fs.renameSync(
+        resolve(__dirname, '../tmp/source/images'),
+        resolve(__dirname, '../tmp/output/images')
+      )
+    }
 
     const output = fs.createWriteStream(outputFile)
     let archive = archiver('zip')
