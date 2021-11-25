@@ -9,10 +9,17 @@ Sketch Fusion works on any system with `node.js` installed, and does not need Sk
 
 ## How it works
 
-To use Sketch Fusion, you need:
+To use Sketch Fusion, you need these files:
 
 - `source.sketch`: a source Sketch document, where we define base styles, colors and symbols.
 - `theme.sketch`: a theme file, which defines the styles, colors and symbols to apply to the source document. Sketch Fusion uses the names of the symbols and colors defined in the theme file to match them to the source document.
 - `output.sketch`: optionally, you can reuse an existing Sketch document to save the results to. This is highly discouraged, as it breaks the single source of truth principle, but is useful in some scenarios. For example, if you already have a file you've created using Camilo or another tool, you can use it as the output document. Otherwise, Sketch Fusion will create it automatically.
 
 Sketch Fusion will ignore any extra information in the theme file.
+
+Once you have the files, you can run the following command:
+
+```bash
+npm install
+npm start
+```
