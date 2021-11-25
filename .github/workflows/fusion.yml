@@ -3,12 +3,12 @@ name: Merge Sketch documents using Fusion
 on:
   push:
     paths:
-      - *.sketch
+      - ./**.sketch
       - .github/workflows/**.yml
     branches: [main]
   pull_request:
     paths:
-      - *.sketch
+      - ./**.sketch
       - .github/workflows/**.yml
     branches: [main]
 
