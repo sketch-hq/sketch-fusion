@@ -1,3 +1,7 @@
+import express from 'express'
+const app = express()
+const port = process.env.PORT || 3000
+
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
 import { fromFile, toFile, SketchFile } from '@sketch-hq/sketch-file'
 import { resolve } from 'path'
@@ -5,33 +9,46 @@ import * as fs from 'fs'
 import archiver from 'archiver'
 import AdmZip from 'adm-zip'
 
+app.listen(port, () => {
+  console.log(`Listening on http://localhost:${port}`)
+})
+
 let options = {
-  reuseOutput: true,
+  reuseOutputFile: false,
   reuseStyleID: true,
+  reuseOutputID: true,
+  updateStyles: true,
 }
 
-const sourceFile = resolve(__dirname, '../source.sketch')
-const themeFile = resolve(__dirname, '../theme.sketch')
-const outputFile = resolve(__dirname, '../output.sketch')
+// const sourceFile = resolve(__dirname, '../0_source.sketch')
+// const themeFile = resolve(__dirname, '../1_theme.sketch')
+// const outputFile = resolve(__dirname, '../2_output.sketch')
 
-if (fs.existsSync(outputFile) && options.reuseOutput == false) {
-  fs.unlinkSync(outputFile)
-}
+const sourceFile = resolve(__dirname, '../0_ui_kit_source.sketch')
+const themeFile = resolve(__dirname, '../1_ui_kit_theme.sketch')
+const outputFile = resolve(__dirname, '../2_ui_kit_output.sketch')
 
-fromFile(sourceFile).then((sourceDocument: SketchFile) => {
-  fromFile(themeFile).then((themeDocument: SketchFile) => {
-    if (fs.existsSync(outputFile) && options.reuseOutput == true) {
-      fromFile(outputFile).then((document: SketchFile) => {
-        mergeDocuments(sourceDocument, themeDocument, document)
-      })
-    } else {
-      const outputDocument: SketchFile = {
-        filepath: outputFile,
-        contents: sourceDocument.contents,
+app.get('/', (req, res) => {
+  if (fs.existsSync(outputFile) && options.reuseOutputFile == false) {
+    fs.unlinkSync(outputFile)
+  }
+
+  fromFile(sourceFile).then((sourceDocument: SketchFile) => {
+    fromFile(themeFile).then((themeDocument: SketchFile) => {
+      if (fs.existsSync(outputFile) && options.reuseOutputFile == true) {
+        fromFile(outputFile).then((document: SketchFile) => {
+          mergeDocuments(sourceDocument, themeDocument, document)
+        })
+      } else {
+        const outputDocument: SketchFile = {
+          filepath: outputFile,
+          contents: sourceDocument.contents,
+        }
+        mergeDocuments(sourceDocument, themeDocument, outputDocument)
       }
-      mergeDocuments(sourceDocument, themeDocument, outputDocument)
-    }
+    })
   })
+  res.send('Merging...')
 })
 
 function mergeDocuments(
@@ -69,8 +86,9 @@ function mergeDocuments(
   })
 
   toFile(outputDocument).then(() => {
-    // Now we need to inject the binary assets into the output file
-    fs.rmdirSync(resolve(__dirname, '../tmp'), { recursive: true })
+    if (fs.existsSync(resolve(__dirname, '../tmp'))) {
+      fs.rmSync(resolve(__dirname, '../tmp'), { recursive: true })
+    }
 
     const sourceZip = new AdmZip(sourceFile)
     sourceZip.extractAllTo(resolve(__dirname, '../tmp/source'), true)
@@ -90,11 +108,14 @@ function mergeDocuments(
     }
 
     const output = fs.createWriteStream(outputFile)
-    let archive = archiver('zip')
+    let archive = archiver('zip', {
+      store: true,
+      zlib: { level: 0 },
+    })
     archive.pipe(output)
     archive.directory(resolve(__dirname, '../tmp/output'), false)
     output.on('close', () => {
-      fs.rmdirSync(resolve(__dirname, '../tmp'), { recursive: true })
+      fs.rmSync(resolve(__dirname, '../tmp'), { recursive: true })
       console.log(`File saved succesfully.`)
     })
     archive.finalize()

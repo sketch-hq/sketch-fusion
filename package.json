@@ -12,11 +12,12 @@
   "author": "Ale Muñoz",
   "license": "MIT",
   "dependencies": {
-    "@sketch-hq/sketch-file": "^1.1.0",
+    "@sketch-hq/sketch-file": "file:../../sketch-document/packages/file",
     "@sketch-hq/sketch-file-format-ts": "^6.1.1",
     "@types/node": "^16.11.7",
     "adm-zip": "^0.5.9",
     "archiver": "^5.3.0",
+    "express": "^4.17.1",
     "path": "^0.12.7",
     "typescript": "^4.4.4"
   }
