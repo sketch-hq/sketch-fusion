@@ -1,0 +1,7 @@
+{
+  "source": "0_ui_kit_source.sketch",
+  "theme": "1_ui_kit_theme.sketch",
+  "output": "2_ui_kit_output.sketch",
+  "reuseOutput": true,
+  "reuseStyleID": true
+}

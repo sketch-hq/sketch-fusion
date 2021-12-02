@@ -8,25 +8,20 @@ import { resolve } from 'path'
 import * as fs from 'fs'
 import archiver from 'archiver'
 import AdmZip from 'adm-zip'
+import uuid from 'uuid'
 
 app.listen(port, () => {
   console.log(`Listening on http://localhost:${port}`)
 })
 
-let options = {
-  reuseOutputFile: false,
-  reuseStyleID: true,
-  reuseOutputID: true,
-  updateStyles: true,
-}
+const options = require(resolve(__dirname, '../config.json'))
 
-// const sourceFile = resolve(__dirname, '../0_source.sketch')
-// const themeFile = resolve(__dirname, '../1_theme.sketch')
-// const outputFile = resolve(__dirname, '../2_output.sketch')
-
-const sourceFile = resolve(__dirname, '../0_ui_kit_source.sketch')
-const themeFile = resolve(__dirname, '../1_ui_kit_theme.sketch')
-const outputFile = resolve(__dirname, '../2_ui_kit_output.sketch')
+const sourceFile = resolve(__dirname, '../' + options.source)
+const themeFile = resolve(__dirname, '../' + options.theme)
+const outputFile = resolve(__dirname, '../' + options.output)
+app.listen(port, () => {
+  console.log(`Listening on http://localhost:${port}`)
+})
 
 app.get('/', (req, res) => {
   if (fs.existsSync(outputFile) && options.reuseOutputFile == false) {
@@ -86,6 +81,9 @@ function mergeDocuments(
   })
 
   toFile(outputDocument).then(() => {
+    // Now we need to inject the binary assets into the output file
+    // This is a workaroud for a bug in our file format tooling, that
+    // we'll fix soon.
     if (fs.existsSync(resolve(__dirname, '../tmp'))) {
       fs.rmSync(resolve(__dirname, '../tmp'), { recursive: true })
     }
@@ -122,6 +120,9 @@ function mergeDocuments(
   })
 }
 
+// TODO: this really needs to be a three way merge if we want to properly
+// reuse styles from the output document. We'll make it a preference, for people
+// who want to publish both the source, output and theme documents.
 function mergeStyles(
   sourceStyles:
     | FileFormat.SharedStyleContainer
@@ -217,7 +218,7 @@ function injectSymbol(
         name: 'Symbols',
         layers: [],
         _class: 'page',
-        do_objectID: 'c6b9bfae-a289-4d8c-92a8-37154b72662f', // TODO: generate a new ID automatically using the 'uuid' library
+        do_objectID: uuid.v4(),
         booleanOperation: -1,
         isFixedToViewport: false,
         isFlippedHorizontal: false,
