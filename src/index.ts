@@ -4,15 +4,13 @@ import { resolve } from 'path'
 import * as fs from 'fs'
 import archiver from 'archiver'
 import AdmZip from 'adm-zip'
+import uuid from 'uuid'
 
-let options = {
-  reuseOutput: true,
-  reuseStyleID: true,
-}
+const options = require(resolve(__dirname, '../config.json'))
 
-const sourceFile = resolve(__dirname, '../source.sketch')
-const themeFile = resolve(__dirname, '../theme.sketch')
-const outputFile = resolve(__dirname, '../output.sketch')
+const sourceFile = resolve(__dirname, '../' + options.source)
+const themeFile = resolve(__dirname, '../' + options.theme)
+const outputFile = resolve(__dirname, '../' + options.output)
 
 if (fs.existsSync(outputFile) && options.reuseOutput == false) {
   fs.unlinkSync(outputFile)
@@ -70,6 +68,8 @@ function mergeDocuments(
 
   toFile(outputDocument).then(() => {
     // Now we need to inject the binary assets into the output file
+    // This is a workaroud for a bug in our file format tooling, that
+    // we'll fix soon.
     fs.rmdirSync(resolve(__dirname, '../tmp'), { recursive: true })
 
     const sourceZip = new AdmZip(sourceFile)
@@ -101,6 +101,9 @@ function mergeDocuments(
   })
 }
 
+// TODO: this really needs to be a three way merge if we want to properly
+// reuse styles from the output document. We'll make it a preference, for people
+// who want to publish both the source, output and theme documents.
 function mergeStyles(
   sourceStyles:
     | FileFormat.SharedStyleContainer
@@ -196,7 +199,7 @@ function injectSymbol(
         name: 'Symbols',
         layers: [],
         _class: 'page',
-        do_objectID: 'c6b9bfae-a289-4d8c-92a8-37154b72662f', // TODO: generate a new ID automatically using the 'uuid' library
+        do_objectID: uuid.v4(),
         booleanOperation: -1,
         isFixedToViewport: false,
         isFlippedHorizontal: false,
