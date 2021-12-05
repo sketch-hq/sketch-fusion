@@ -7,7 +7,6 @@ import AdmZip from 'adm-zip'
 import { v4 as uuidv4 } from 'uuid'
 import fileUpload from 'express-fileupload'
 import express from 'express'
-import { resolve } from 'path/posix'
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -18,7 +17,7 @@ app.use(
     uploadTimeout: 0,
   })
 )
-app.use(express.static(path.resolve(__dirname, '../www')))
+app.use(express.static(path.resolve(__dirname, '../public')))
 
 app.listen(port, () => {
   console.log(`Listening on http://localhost:${port}`)
