@@ -1,56 +1,106 @@
-import express from 'express'
-const app = express()
-const port = process.env.PORT || 3000
-
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
 import { fromFile, toFile, SketchFile } from '@sketch-hq/sketch-file'
-import { resolve } from 'path'
+import path from 'path'
 import * as fs from 'fs'
 import archiver from 'archiver'
 import AdmZip from 'adm-zip'
-import uuid from 'uuid'
+import { v4 as uuidv4 } from 'uuid'
+import fileUpload from 'express-fileupload'
+import express from 'express'
+import { resolve } from 'path/posix'
 
-app.listen(port, () => {
-  console.log(`Listening on http://localhost:${port}`)
-})
+const app = express()
+const port = process.env.PORT || 3000
 
-const options = require(resolve(__dirname, '../config.json'))
-
-const sourceFile = resolve(__dirname, '../' + options.source)
-const themeFile = resolve(__dirname, '../' + options.theme)
-const outputFile = resolve(__dirname, '../' + options.output)
-app.listen(port, () => {
-  console.log(`Listening on http://localhost:${port}`)
-})
-
-app.get('/', (req, res) => {
-  if (fs.existsSync(outputFile) && options.reuseOutputFile == false) {
-    fs.unlinkSync(outputFile)
-  }
-
-  fromFile(sourceFile).then((sourceDocument: SketchFile) => {
-    fromFile(themeFile).then((themeDocument: SketchFile) => {
-      if (fs.existsSync(outputFile) && options.reuseOutputFile == true) {
-        fromFile(outputFile).then((document: SketchFile) => {
-          mergeDocuments(sourceDocument, themeDocument, document)
-        })
-      } else {
-        const outputDocument: SketchFile = {
-          filepath: outputFile,
-          contents: sourceDocument.contents,
-        }
-        mergeDocuments(sourceDocument, themeDocument, outputDocument)
-      }
-    })
+app.use(
+  fileUpload({
+    // debug: true,
+    uploadTimeout: 0,
   })
-  res.send('Merging...')
+)
+app.use(express.static(path.resolve(__dirname, '../www')))
+
+app.listen(port, () => {
+  console.log(`Listening on http://localhost:${port}`)
 })
 
-function mergeDocuments(
+const options = require(path.resolve(__dirname, '../config.json'))
+
+app.post('/upload', (req, res) => {
+  if (!req.files || Object.keys(req.files).length < 2) {
+    // TODO: Proper error checking. We need to make sure we have all the files we need,
+    // not just the first two.
+    res.status(400).send('You need to upload at least 2 files.')
+    return
+  } else {
+    // Make a folder to store all the files we'll use
+    const fuseFolder = path.resolve(__dirname, '../uploads/', uuidv4())
+    fs.mkdirSync(fuseFolder, { recursive: true })
+
+    const filesToMerge = []
+    req.files.sourceFile.mv(
+      path.resolve(fuseFolder, req.files.sourceFile.name),
+      (err) => {
+        if (err) {
+          console.error(err)
+          res.status(500).send('Error moving source file.')
+          return
+        }
+
+        filesToMerge.push(path.resolve(fuseFolder, req.files.sourceFile.name))
+        req.files.themeFile.mv(
+          path.resolve(fuseFolder, req.files.themeFile.name),
+          (err) => {
+            if (err) {
+              console.error(err)
+              res.status(500).send('Error moving theme file.')
+              return
+            }
+            filesToMerge.push(
+              path.resolve(fuseFolder, req.files.themeFile.name)
+            )
+            if (req.files.outputFile) {
+              req.files.outputFile.mv(
+                path.resolve(fuseFolder, req.files.outputFile.name),
+                (err) => {
+                  if (err) {
+                    console.error(err)
+                    res.status(500).send('Error moving output file.')
+                    return
+                  }
+                  console.log(`Output file provided, so let's use it`)
+
+                  filesToMerge.push(
+                    path.resolve(fuseFolder, req.files.outputFile.name)
+                  )
+                  mergeFiles(filesToMerge).then((filepath) => {
+                    console.log(`Starting download`)
+                    res.download(filepath)
+                  })
+                }
+              )
+            } else {
+              console.log(
+                `No output file provided, so we'll just merge the files.`
+              )
+              filesToMerge.push(path.resolve(fuseFolder, 'output.sketch'))
+              mergeFiles(filesToMerge).then((filepath) => {
+                console.log(`Starting download`)
+                res.download(filepath)
+              })
+            }
+          }
+        )
+      }
+    )
+  }
+})
+
+async function mergeDocuments(
   sourceDocument: SketchFile,
   themeDocument: SketchFile,
   outputDocument: SketchFile
-) {
+): Promise<string> {
   // 1. Merge Layer Styles
   outputDocument.contents.document.layerStyles = mergeStyles(
     sourceDocument.contents.document.layerStyles,
@@ -80,43 +130,62 @@ function mergeDocuments(
     })
   })
 
-  toFile(outputDocument).then(() => {
-    // Now we need to inject the binary assets into the output file
-    // This is a workaroud for a bug in our file format tooling, that
-    // we'll fix soon.
-    if (fs.existsSync(resolve(__dirname, '../tmp'))) {
-      fs.rmSync(resolve(__dirname, '../tmp'), { recursive: true })
-    }
+  return new Promise((resolve, reject) => {
+    toFile(outputDocument).then(() => {
+      // Now we need to inject the binary assets into the output file
+      // This is a workaroud for a bug in our file format tooling, that
+      // we'll fix soon.
 
-    const sourceZip = new AdmZip(sourceFile)
-    sourceZip.extractAllTo(resolve(__dirname, '../tmp/source'), true)
-    const outputZip = new AdmZip(outputFile)
-    outputZip.extractAllTo(resolve(__dirname, '../tmp/output'), true)
-    if (fs.existsSync(resolve(__dirname, '../tmp/source/fonts'))) {
-      fs.renameSync(
-        resolve(__dirname, '../tmp/source/fonts'),
-        resolve(__dirname, '../tmp/output/fonts')
-      )
-    }
-    if (fs.existsSync(resolve(__dirname, '../tmp/source/images'))) {
-      fs.renameSync(
-        resolve(__dirname, '../tmp/source/images'),
-        resolve(__dirname, '../tmp/output/images')
-      )
-    }
+      // Make a temp folder inside our uploads folder
+      const tempFolder = path.resolve(__dirname, '../tmp/', uuidv4())
+      fs.mkdirSync(tempFolder, { recursive: true })
+      const sourceFolder = path.resolve(tempFolder, 'source')
+      //const themeFolder = path.resolve(tempFolder, 'theme')
+      const outputFolder = path.resolve(tempFolder, 'output')
+      console.log(sourceFolder)
+      console.log(outputFolder)
 
-    const output = fs.createWriteStream(outputFile)
-    let archive = archiver('zip', {
-      store: true,
-      zlib: { level: 0 },
+      let needsToBeZipped = false
+      const sourceZip = new AdmZip(sourceDocument.filepath)
+      sourceZip.extractAllTo(sourceFolder, true)
+      // is ☝️ async?
+      console.log('Source unzipped')
+
+      const outputZip = new AdmZip(outputDocument.filepath)
+      outputZip.extractAllTo(outputFolder, true)
+      // is ☝️ async?
+      console.log('Output unzipped')
+
+      if (fs.existsSync(path.resolve(sourceFolder, 'fonts'))) {
+        needsToBeZipped = true
+        fs.renameSync(
+          path.resolve(sourceFolder, 'fonts'),
+          path.resolve(outputFolder, 'fonts')
+        )
+      }
+      if (fs.existsSync(path.resolve(sourceFolder, 'images'))) {
+        needsToBeZipped = true
+        fs.renameSync(
+          path.resolve(sourceFolder, 'images'),
+          path.resolve(outputFolder, 'images')
+        )
+      }
+
+      if (needsToBeZipped) {
+        const output = fs.createWriteStream(outputDocument.filepath)
+        let archive = archiver('zip')
+        archive.pipe(output)
+        archive.directory(path.resolve(outputFolder), false)
+        output.on('close', () => {
+          console.log(`File saved succesfully.`)
+          resolve(outputDocument.filepath)
+        })
+        archive.finalize()
+        // is ☝️ async?
+      } else {
+        resolve(outputDocument.filepath)
+      }
     })
-    archive.pipe(output)
-    archive.directory(resolve(__dirname, '../tmp/output'), false)
-    output.on('close', () => {
-      fs.rmSync(resolve(__dirname, '../tmp'), { recursive: true })
-      console.log(`File saved succesfully.`)
-    })
-    archive.finalize()
   })
 }
 
@@ -218,7 +287,7 @@ function injectSymbol(
         name: 'Symbols',
         layers: [],
         _class: 'page',
-        do_objectID: uuid.v4(),
+        do_objectID: uuidv4(),
         booleanOperation: -1,
         isFixedToViewport: false,
         isFlippedHorizontal: false,
@@ -272,4 +341,36 @@ function injectSymbol(
     symbolPage.layers.push(symbol)
   }
   return document
+}
+
+async function mergeFiles(fileArray: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const sourceFile = fileArray[0]
+    const themeFile = fileArray[1]
+    const outputFile = fileArray[2]
+    fromFile(sourceFile).then((sourceDocument: SketchFile) => {
+      fromFile(themeFile).then((themeDocument: SketchFile) => {
+        if (fs.existsSync(outputFile)) {
+          console.log(`File already exists, so let's read it: ${outputFile}`)
+          fromFile(outputFile).then((document: SketchFile) => {
+            mergeDocuments(sourceDocument, themeDocument, document).then(
+              (output) => {
+                resolve(output)
+              }
+            )
+          })
+        } else {
+          const outputDocument: SketchFile = {
+            filepath: outputFile,
+            contents: sourceDocument.contents,
+          }
+          mergeDocuments(sourceDocument, themeDocument, outputDocument).then(
+            (outputFile) => {
+              resolve(outputFile)
+            }
+          )
+        }
+      })
+    })
+  })
 }
