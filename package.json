@@ -4,7 +4,8 @@
   "description": "Sketch Fusion applies themes to Design System documents.",
   "main": "src/index.ts",
   "scripts": {
-    "start": "tsc && node src/index.js"
+    "start": "tsc && node src/index.js",
+    "web": "tsc && node app.js"
   },
   "keywords": [
     "sketchapp"
