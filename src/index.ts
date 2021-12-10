@@ -60,22 +60,179 @@ async function mergeDocuments(
   // Although we could just do this when we inject the relevant items, we'll do it here
   // to make sure that all the pieces are now in place
   console.log(`One final pass to update all the styles and colors`)
+  const swatches = outputDocument.contents.document.sharedSwatches
   outputDocument.contents.document.pages.forEach((page: FileFormat.Page) => {
-    const swatches = outputDocument.contents.document.sharedSwatches
     page.layers.forEach((layer) => {
       layer = cleanupColorsInLayer(layer, swatches)
-      // TODO: This could be a good place to inject dynamic data, by now we'll only log stuff
       if (layer._class === 'text') {
         layer = injectDynamicData(layer, data)
       }
     })
   })
   // 6. Update text styles
+  outputDocument.contents.document.layerStyles.objects.forEach((style) => {
+    // console.log(`Updating Layer Style: ${style.name}`)
+    // console.log(style.value)
+    style.value.fills?.forEach((fill) => {
+      if (fill.color.swatchID !== undefined) {
+        const matchingSwatch = matchingSwatchForColorInSwatches(
+          fill.color,
+          swatches
+        )
+        if (
+          matchingSwatch &&
+          !colorsAreEqual(fill.color, matchingSwatch.value)
+        ) {
+          fill.color = {
+            ...matchingSwatch.value,
+            swatchID: matchingSwatch.do_objectID,
+          }
+        }
+      }
+    })
+    style.value.borders?.forEach((border) => {
+      if (border.color.swatchID !== undefined) {
+        const matchingSwatch = matchingSwatchForColorInSwatches(
+          border.color,
+          swatches
+        )
+        if (
+          matchingSwatch &&
+          !colorsAreEqual(border.color, matchingSwatch.value)
+        ) {
+          border.color = {
+            ...matchingSwatch.value,
+            swatchID: matchingSwatch.do_objectID,
+          }
+        }
+      }
+    })
+    style.value.shadows?.forEach((shadow) => {
+      if (shadow.color.swatchID !== undefined) {
+        const matchingSwatch = matchingSwatchForColorInSwatches(
+          shadow.color,
+          swatches
+        )
+        if (
+          matchingSwatch &&
+          !colorsAreEqual(shadow.color, matchingSwatch.value)
+        ) {
+          shadow.color = {
+            ...matchingSwatch.value,
+            swatchID: matchingSwatch.do_objectID,
+          }
+        }
+      }
+    })
+    style.value.innerShadows?.forEach((shadow) => {
+      if (shadow.color.swatchID !== undefined) {
+        const matchingSwatch = matchingSwatchForColorInSwatches(
+          shadow.color,
+          swatches
+        )
+        if (
+          matchingSwatch &&
+          !colorsAreEqual(shadow.color, matchingSwatch.value)
+        ) {
+          shadow.color = {
+            ...matchingSwatch.value,
+            swatchID: matchingSwatch.do_objectID,
+          }
+        }
+      }
+    })
+  })
   // 7. Update layer styles
+  outputDocument.contents.document.layerTextStyles.objects.forEach((style) => {
+    // console.log(`Updating Text Style: ${style.name}`)
+    // console.log(style.value)
+    style.value.fills?.forEach((fill) => {
+      if (fill.color.swatchID !== undefined) {
+        const matchingSwatch = matchingSwatchForColorInSwatches(
+          fill.color,
+          swatches
+        )
+        if (
+          matchingSwatch &&
+          !colorsAreEqual(fill.color, matchingSwatch.value)
+        ) {
+          fill.color = {
+            ...matchingSwatch.value,
+            swatchID: matchingSwatch.do_objectID,
+          }
+        }
+      }
+    })
+    style.value.borders?.forEach((border) => {
+      if (border.color.swatchID !== undefined) {
+        const matchingSwatch = matchingSwatchForColorInSwatches(
+          border.color,
+          swatches
+        )
+        if (
+          matchingSwatch &&
+          !colorsAreEqual(border.color, matchingSwatch.value)
+        ) {
+          border.color = {
+            ...matchingSwatch.value,
+            swatchID: matchingSwatch.do_objectID,
+          }
+        }
+      }
+    })
+    style.value.shadows?.forEach((shadow) => {
+      if (shadow.color.swatchID !== undefined) {
+        const matchingSwatch = matchingSwatchForColorInSwatches(
+          shadow.color,
+          swatches
+        )
+        if (
+          matchingSwatch &&
+          !colorsAreEqual(shadow.color, matchingSwatch.value)
+        ) {
+          shadow.color = {
+            ...matchingSwatch.value,
+            swatchID: matchingSwatch.do_objectID,
+          }
+        }
+      }
+    })
+    style.value.innerShadows?.forEach((shadow) => {
+      if (shadow.color.swatchID !== undefined) {
+        const matchingSwatch = matchingSwatchForColorInSwatches(
+          shadow.color,
+          swatches
+        )
+        if (
+          matchingSwatch &&
+          !colorsAreEqual(shadow.color, matchingSwatch.value)
+        ) {
+          shadow.color = {
+            ...matchingSwatch.value,
+            swatchID: matchingSwatch.do_objectID,
+          }
+        }
+      }
+    })
+
+    const textColor: FileFormat.Color =
+      style.value.textStyle.encodedAttributes.MSAttributedStringColorAttribute
+    if (textColor.swatchID !== undefined) {
+      const matchingSwatch = matchingSwatchForColorInSwatches(
+        textColor,
+        swatches
+      )
+      if (matchingSwatch && !colorsAreEqual(textColor, matchingSwatch.value)) {
+        style.value.textStyle.encodedAttributes.MSAttributedStringColorAttribute =
+          { ...matchingSwatch.value, swatchID: matchingSwatch.do_objectID }
+      }
+    }
+  })
 
   console.log(
     `We are now going to save ${outputDocument.filepath} (or at least try)`
   )
+
   return new Promise((resolve, reject) => {
     toFile(outputDocument).then(() => {
       // Now we need to inject the binary assets into the output file
