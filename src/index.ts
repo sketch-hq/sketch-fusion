@@ -34,6 +34,16 @@ async function mergeDocuments(
   )
 
   // 4. Merge Symbols
+  console.log(`Merging Symbols`)
+  // First, inject the symbols from the source document, as they may have changed:
+  sourceDocument.contents.document.pages.forEach((page: FileFormat.Page) => {
+    page.layers.forEach((symbol: FileFormat.SymbolMaster) => {
+      if (symbol._class === 'symbolMaster') {
+        outputDocument = injectSymbol(symbol, outputDocument)
+      }
+    })
+  })
+  // Then, inject the symbols from the theme document:o
   themeDocument.contents.document.pages.forEach((page: FileFormat.Page) => {
     page.layers.forEach((symbol: FileFormat.SymbolMaster) => {
       if (symbol._class === 'symbolMaster') {
