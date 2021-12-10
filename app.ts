@@ -77,7 +77,9 @@ app.post('/upload', (req, res) => {
               console.log(
                 `No output file provided, so we'll just merge the files.`
               )
-              filesToMerge.push(path.resolve(fuseFolder, 'output.sketch'))
+              filesToMerge.push(
+                path.resolve(fuseFolder, `output-${Date.now()}.sketch`)
+              )
               mergeFiles(filesToMerge).then((filepath) => {
                 console.log(`Starting download`)
                 res.download(filepath)
