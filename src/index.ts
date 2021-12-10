@@ -7,6 +7,7 @@ import AdmZip from 'adm-zip'
 import { v4 as uuidv4 } from 'uuid'
 
 const options = require(path.resolve(__dirname, '../config.json'))
+const data = require(path.resolve(__dirname, '../data.json'))
 
 async function mergeDocuments(
   sourceDocument: SketchFile,
@@ -14,6 +15,7 @@ async function mergeDocuments(
   outputDocument: SketchFile
 ): Promise<string> {
   // 1. Merge Layer Styles
+  console.log(`Merging Layer Styles`)
   outputDocument.contents.document.layerStyles = mergeStyles(
     sourceDocument.contents.document.layerStyles,
     themeDocument.contents.document.layerStyles,
@@ -21,6 +23,7 @@ async function mergeDocuments(
   )
 
   // 2. Merge Text Styles
+  console.log(`Merging Text Styles`)
   outputDocument.contents.document.layerTextStyles = mergeStyles(
     sourceDocument.contents.document.layerTextStyles,
     themeDocument.contents.document.layerTextStyles,
@@ -28,6 +31,7 @@ async function mergeDocuments(
   )
 
   // 3. Merge Colors
+  console.log(`Merging Colors`)
   outputDocument.contents.document.sharedSwatches = mergeColors(
     sourceDocument.contents.document.sharedSwatches,
     themeDocument.contents.document.sharedSwatches
@@ -52,6 +56,26 @@ async function mergeDocuments(
     })
   })
 
+  // 5. Now we need to make sure that all the layers are using the new styles and colors
+  // Although we could just do this when we inject the relevant items, we'll do it here
+  // to make sure that all the pieces are now in place
+  console.log(`One final pass to update all the styles and colors`)
+  outputDocument.contents.document.pages.forEach((page: FileFormat.Page) => {
+    const swatches = outputDocument.contents.document.sharedSwatches
+    page.layers.forEach((layer) => {
+      layer = cleanupColorsInLayer(layer, swatches)
+      // TODO: This could be a good place to inject dynamic data, by now we'll only log stuff
+      if (layer._class === 'text') {
+        layer = injectDynamicData(layer, data)
+      }
+    })
+  })
+  // 6. Update text styles
+  // 7. Update layer styles
+
+  console.log(
+    `We are now going to save ${outputDocument.filepath} (or at least try)`
+  )
   return new Promise((resolve, reject) => {
     toFile(outputDocument).then(() => {
       // Now we need to inject the binary assets into the output file
@@ -101,11 +125,14 @@ async function mergeDocuments(
         archive.directory(path.resolve(outputFolder), false)
         output.on('close', () => {
           console.log(`File saved succesfully.`)
+          fs.rmdirSync(tempFolder, { recursive: true })
           resolve(outputDocument.filepath)
         })
         archive.finalize()
         // is ☝️ async?
       } else {
+        console.log(`File saved succesfully.`)
+        fs.rmdirSync(tempFolder, { recursive: true })
         resolve(outputDocument.filepath)
       }
     })
@@ -267,10 +294,13 @@ function injectSymbol(
 }
 
 export async function mergeFiles(fileArray: string[]): Promise<string> {
+  console.log(`Merging ${fileArray.length} files:`)
+  console.log(fileArray)
   return new Promise((resolve, reject) => {
     const sourceFile = fileArray[0]
     const themeFile = fileArray[1]
     const outputFile = fileArray[2]
+
     fromFile(sourceFile).then((sourceDocument: SketchFile) => {
       fromFile(themeFile).then((themeDocument: SketchFile) => {
         if (fs.existsSync(outputFile)) {
@@ -296,4 +326,167 @@ export async function mergeFiles(fileArray: string[]): Promise<string> {
       })
     })
   })
+}
+
+function colorsAreEqual(
+  colorOne: FileFormat.Color,
+  colorTwo: FileFormat.Color
+): boolean {
+  return (
+    colorOne.alpha === colorTwo.alpha &&
+    colorOne.red === colorTwo.red &&
+    colorOne.green === colorTwo.green &&
+    colorOne.blue === colorTwo.blue
+  )
+}
+
+function matchingSwatchForColorInSwatches(
+  color: FileFormat.Color,
+  swatches: FileFormat.SwatchContainer
+): FileFormat.Swatch {
+  return swatches.objects.find((swatch) => {
+    //return colorsAreEqual(swatch.value, color)
+    return swatch.do_objectID === color.swatchID
+  })
+}
+
+function cleanupColorsInLayer(
+  layer: any,
+  swatches: FileFormat.SwatchContainer
+) {
+  // console.log(`Updating layer: ${layer.name}`)
+  if (
+    layer._class == 'artboard' ||
+    layer._class == 'symbolMaster' ||
+    layer._class == 'group'
+  ) {
+    layer.layers.forEach((sublayer) => {
+      sublayer = cleanupColorsInLayer(sublayer, swatches)
+    })
+  }
+  // - Update fills & tints
+  // TODO: not sure this is taking care of gradient fills...
+  layer.style?.fills?.forEach((fill: FileFormat.Fill) => {
+    if (fill.color.swatchID !== undefined) {
+      const matchingSwatch = matchingSwatchForColorInSwatches(
+        fill.color,
+        swatches
+      )
+      if (matchingSwatch && !colorsAreEqual(fill.color, matchingSwatch.value)) {
+        fill.color = {
+          ...matchingSwatch.value,
+          swatchID: matchingSwatch.do_objectID,
+        }
+      }
+    }
+  })
+
+  // - Update borders
+  layer.style?.borders?.forEach((border: FileFormat.Border) => {
+    if (border.color.swatchID !== undefined) {
+      const matchingSwatch = matchingSwatchForColorInSwatches(
+        border.color,
+        swatches
+      )
+      if (
+        matchingSwatch &&
+        !colorsAreEqual(border.color, matchingSwatch.value)
+      ) {
+        border.color = {
+          ...matchingSwatch.value,
+          swatchID: matchingSwatch.do_objectID,
+        }
+      }
+    }
+  })
+
+  // - Update shadows
+  layer.style?.shadows?.forEach((shadow: FileFormat.Shadow) => {
+    if (shadow.color.swatchID !== undefined) {
+      const matchingSwatch = matchingSwatchForColorInSwatches(
+        shadow.color,
+        swatches
+      )
+      if (
+        matchingSwatch &&
+        !colorsAreEqual(shadow.color, matchingSwatch.value)
+      ) {
+        shadow.color = {
+          ...matchingSwatch.value,
+          swatchID: matchingSwatch.do_objectID,
+        }
+      }
+    }
+  })
+
+  // - Update innerShadows
+  layer.style?.innerShadows?.forEach((shadow: FileFormat.InnerShadow) => {
+    if (shadow.color.swatchID !== undefined) {
+      const matchingSwatch = matchingSwatchForColorInSwatches(
+        shadow.color,
+        swatches
+      )
+      if (
+        matchingSwatch &&
+        !colorsAreEqual(shadow.color, matchingSwatch.value)
+      ) {
+        shadow.color = {
+          ...matchingSwatch.value,
+          swatchID: matchingSwatch.do_objectID,
+        }
+      }
+    }
+  })
+
+  // - Update text colors
+  if (layer._class === 'text') {
+    const attributes = layer.attributedString.attributes
+    attributes.forEach((attribute) => {
+      const color = attribute.attributes.MSAttributedStringColorAttribute
+      if (color.swatchID !== undefined) {
+        const matchingSwatch = matchingSwatchForColorInSwatches(color, swatches)
+        if (matchingSwatch && !colorsAreEqual(color, matchingSwatch.value)) {
+          attribute.attributes.MSAttributedStringColorAttribute = {
+            ...matchingSwatch.value,
+            swatchID: matchingSwatch.do_objectID,
+          }
+        }
+      }
+    })
+  }
+
+  // - Update Artboard and Slice backgrounds
+  if (
+    (layer._class === 'slice' || layer._class === 'artboard') &&
+    layer.hasBackgroundColor
+  ) {
+    const backgroundColor = layer.backgroundColor
+    const matchingSwatch = matchingSwatchForColorInSwatches(
+      backgroundColor,
+      swatches
+    )
+    if (matchingSwatch) {
+      layer.backgroundColor = {
+        ...matchingSwatch.value,
+        swatchID: matchingSwatch.do_objectID,
+      }
+    }
+  }
+
+  return layer
+}
+
+function injectDynamicData(layer: FileFormat.Text, data) {
+  const text = layer.attributedString.string
+  Object.keys(data).forEach((key) => {
+    const match = `%%${key}%%`
+    if (text.includes(match)) {
+      const value = data[key]
+      layer.attributedString.string = text.replace(match, value)
+      // TODO: fix this hack, because it only works for text layers with a single style
+      layer.attributedString.attributes[0].length =
+        layer.attributedString.string.length
+    }
+  })
+  return layer
 }
