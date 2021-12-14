@@ -14,8 +14,18 @@ async function mergeDocuments(
   themeDocument: SketchFile,
   outputDocument: SketchFile
 ): Promise<string> {
+  console.log('Merging documents:')
+  console.log(
+    `  Source: ${sourceDocument.filepath}, ID: ${sourceDocument.contents.document.do_objectID}`
+  )
+  console.log(
+    `  Theme: ${themeDocument.filepath}, ID: ${themeDocument.contents.document.do_objectID}`
+  )
+  console.log(
+    `  Output: ${outputDocument.filepath}, ID: ${outputDocument.contents.document.do_objectID}`
+  )
   // 1. Merge Layer Styles
-  console.log(`Merging Layer Styles`)
+  // console.log(`Merging Layer Styles`)
   outputDocument.contents.document.layerStyles = mergeStyles(
     sourceDocument.contents.document.layerStyles,
     themeDocument.contents.document.layerStyles,
@@ -23,7 +33,7 @@ async function mergeDocuments(
   )
 
   // 2. Merge Text Styles
-  console.log(`Merging Text Styles`)
+  // console.log(`Merging Text Styles`)
   outputDocument.contents.document.layerTextStyles = mergeStyles(
     sourceDocument.contents.document.layerTextStyles,
     themeDocument.contents.document.layerTextStyles,
@@ -31,14 +41,14 @@ async function mergeDocuments(
   )
 
   // 3. Merge Colors
-  console.log(`Merging Colors`)
+  // console.log(`Merging Colors`)
   outputDocument.contents.document.sharedSwatches = mergeColors(
     sourceDocument.contents.document.sharedSwatches,
     themeDocument.contents.document.sharedSwatches
   )
 
   // 4. Merge Symbols
-  console.log(`Merging Symbols`)
+  // console.log(`Merging Symbols`)
   // First, inject the symbols from the source document, as they may have changed:
   sourceDocument.contents.document.pages.forEach((page: FileFormat.Page) => {
     page.layers.forEach((symbol: FileFormat.SymbolMaster) => {
@@ -59,7 +69,7 @@ async function mergeDocuments(
   // 5. Now we need to make sure that all the layers are using the new styles and colors
   // Although we could just do this when we inject the relevant items, we'll do it here
   // to make sure that all the pieces are now in place
-  console.log(`One final pass to update all the styles and colors`)
+  // console.log(`One final pass to update all the styles and colors`)
   const swatches = outputDocument.contents.document.sharedSwatches
   outputDocument.contents.document.pages.forEach((page: FileFormat.Page) => {
     page.layers.forEach((layer) => {
@@ -244,21 +254,20 @@ async function mergeDocuments(
       const tempFolder = path.resolve(__dirname, '../tmp/', uuidv4())
       fs.mkdirSync(tempFolder, { recursive: true })
       const sourceFolder = path.resolve(tempFolder, 'source')
-      //const themeFolder = path.resolve(tempFolder, 'theme')
       const outputFolder = path.resolve(tempFolder, 'output')
-      console.log(sourceFolder)
-      console.log(outputFolder)
+      // console.log(sourceFolder)
+      // console.log(outputFolder)
 
       let needsToBeZipped = false
       const sourceZip = new AdmZip(sourceDocument.filepath)
       sourceZip.extractAllTo(sourceFolder, true)
       // is ☝️ async?
-      console.log('Source unzipped')
+      // console.log('Source unzipped')
 
       const outputZip = new AdmZip(outputDocument.filepath)
       outputZip.extractAllTo(outputFolder, true)
       // is ☝️ async?
-      console.log('Output unzipped')
+      // console.log('Output unzipped')
 
       if (fs.existsSync(path.resolve(sourceFolder, 'fonts'))) {
         needsToBeZipped = true
@@ -281,14 +290,14 @@ async function mergeDocuments(
         archive.pipe(output)
         archive.directory(path.resolve(outputFolder), false)
         output.on('close', () => {
-          console.log(`File saved succesfully.`)
+          // console.log(`File saved succesfully.`)
           fs.rmdirSync(tempFolder, { recursive: true })
           resolve(outputDocument.filepath)
         })
         archive.finalize()
         // is ☝️ async?
       } else {
-        console.log(`File saved succesfully.`)
+        // console.log(`File saved succesfully.`)
         fs.rmdirSync(tempFolder, { recursive: true })
         resolve(outputDocument.filepath)
       }
@@ -451,8 +460,9 @@ function injectSymbol(
 }
 
 export async function mergeFiles(fileArray: string[]): Promise<string> {
-  console.log(`Merging ${fileArray.length} files:`)
-  console.log(fileArray)
+  // TODO: pass the options object in here
+  // console.log(`Merging ${fileArray.length} files:`)
+  // console.log(fileArray)
   return new Promise((resolve, reject) => {
     const sourceFile = fileArray[0]
     const themeFile = fileArray[1]
@@ -461,7 +471,7 @@ export async function mergeFiles(fileArray: string[]): Promise<string> {
     fromFile(sourceFile).then((sourceDocument: SketchFile) => {
       fromFile(themeFile).then((themeDocument: SketchFile) => {
         if (fs.existsSync(outputFile)) {
-          console.log(`File already exists, so let's read it: ${outputFile}`)
+          // console.log(`File already exists, so let's read it: ${outputFile}`)
           fromFile(outputFile).then((document: SketchFile) => {
             mergeDocuments(sourceDocument, themeDocument, document).then(
               (output) => {
@@ -472,8 +482,67 @@ export async function mergeFiles(fileArray: string[]): Promise<string> {
         } else {
           const outputDocument: SketchFile = {
             filepath: outputFile,
+            // Beware that this is not a clone, but a reference, and changes to the output document will also change the source document
+            // It does not really matter though, as we are only using the output document for writing,
+            // but this could be a problem in other cases
             contents: sourceDocument.contents,
+            // contents: { ...sourceDocument.contents },
           }
+          // The fact that we have to clone all this stuff here makes me incredibly nervous
+          // TODO: see if we lose data if we don't copy all of these. In particular, the userInfo and workspace data is vital
+          // outputDocument.contents.user = {
+          //   ...sourceDocument.contents.user,
+          // }
+          // outputDocument.contents.meta = {
+          //   ...sourceDocument.contents.meta,
+          // }
+          // outputDocument.contents.workspace = {
+          //   ...sourceDocument.contents.workspace,
+          // }
+          // outputDocument.contents.document = {
+          //   ...sourceDocument.contents.document,
+          // }
+          // outputDocument.contents.document.pages = {
+          //   ...sourceDocument.contents.document.pages,
+          // }
+
+          // Use a new ID for the output document, otherwise Sketch will get confused
+          // and think it's a duplicate of the source document. We're going to combine
+          // the uuid of the source document with the uuid of the theme document, to get
+          // a unique (but repeatable) ID for the output document.
+          // Unsurprisingly, this doesn't work
+          // const sourceUUID = sourceDocument.contents.document.do_objectID
+          // const themeUUID = themeDocument.contents.document.do_objectID
+          // const sourceUUIDBytes = uuidParse(sourceUUID)
+          // const themeUUIDBytes = uuidParse(themeUUID)
+          // let outputUUIDBytes = []
+          // for (let i = 0; i < 8; i++) {
+          //   outputUUIDBytes.push(sourceUUIDBytes[i])
+          // }
+          // for (let i = 0; i < 8; i++) {
+          //   outputUUIDBytes.push(themeUUIDBytes[i])
+          // }
+          // outputDocument.contents.document.do_objectID = uuidStringify(outputUUIDBytes)
+          // Meanwhile, we'll just use a random uuid and assume that if the ID is relevant,
+          // they will upload an output file.
+          console.log(
+            `Original ID for source document: ${sourceDocument.contents.document.do_objectID}`
+          )
+          outputDocument.contents.document.do_objectID = uuidv4().toUpperCase()
+          // console.log(
+          //   sourceDocument.contents.document ===
+          //     outputDocument.contents.document
+          // )
+          // console.log(
+          //   `Original ID for output document: ${outputDocument.contents.document.do_objectID}`
+          // )
+          // outputDocument.contents.document.do_objectID = uuidv4().toUpperCase()
+          // console.log(
+          //   `New ID for source document: ${sourceDocument.contents.document.do_objectID}`
+          // )
+          console.log(
+            `New ID for output document: ${outputDocument.contents.document.do_objectID}`
+          )
           mergeDocuments(sourceDocument, themeDocument, outputDocument).then(
             (outputFile) => {
               resolve(outputFile)
