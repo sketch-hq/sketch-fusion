@@ -50,6 +50,8 @@ async function mergeDocuments(
   // 4. Merge Symbols
   // console.log(`Merging Symbols`)
   // First, inject the symbols from the source document, as they may have changed:
+  // TODO: we can skip this step if we're not using the output document
+  // I am commenting this out for now, because it breaks my demo
   sourceDocument.contents.document.pages.forEach((page: FileFormat.Page) => {
     page.layers.forEach((symbol: FileFormat.SymbolMaster) => {
       if (symbol._class === 'symbolMaster') {
@@ -71,18 +73,15 @@ async function mergeDocuments(
   // to make sure that all the pieces are now in place
   // console.log(`One final pass to update all the styles and colors`)
   const swatches = outputDocument.contents.document.sharedSwatches
+
   outputDocument.contents.document.pages.forEach((page: FileFormat.Page) => {
     page.layers.forEach((layer) => {
       layer = cleanupColorsInLayer(layer, swatches)
-      if (layer._class === 'text') {
-        layer = injectDynamicData(layer, data)
-      }
+      layer = injectDynamicData(layer, data)
     })
   })
-  // 6. Update text styles
+  // 6. Update layer styles
   outputDocument.contents.document.layerStyles.objects.forEach((style) => {
-    // console.log(`Updating Layer Style: ${style.name}`)
-    // console.log(style.value)
     style.value.fills?.forEach((fill) => {
       if (fill.color.swatchID !== undefined) {
         const matchingSwatch = matchingSwatchForColorInSwatches(
@@ -152,7 +151,7 @@ async function mergeDocuments(
       }
     })
   })
-  // 7. Update layer styles
+  // 7. Update text styles
   outputDocument.contents.document.layerTextStyles.objects.forEach((style) => {
     // console.log(`Updating Text Style: ${style.name}`)
     // console.log(style.value)
@@ -245,6 +244,8 @@ async function mergeDocuments(
 
   return new Promise((resolve, reject) => {
     toFile(outputDocument).then(() => {
+      // resolve(outputDocument.filepath)
+
       // Now we need to inject the binary assets into the output file
       // This is a workaroud for a bug in our file format tooling, that
       // we'll fix soon.
@@ -255,19 +256,13 @@ async function mergeDocuments(
       fs.mkdirSync(tempFolder, { recursive: true })
       const sourceFolder = path.resolve(tempFolder, 'source')
       const outputFolder = path.resolve(tempFolder, 'output')
-      // console.log(sourceFolder)
-      // console.log(outputFolder)
 
       let needsToBeZipped = false
       const sourceZip = new AdmZip(sourceDocument.filepath)
       sourceZip.extractAllTo(sourceFolder, true)
-      // is ☝️ async?
-      // console.log('Source unzipped')
 
       const outputZip = new AdmZip(outputDocument.filepath)
       outputZip.extractAllTo(outputFolder, true)
-      // is ☝️ async?
-      // console.log('Output unzipped')
 
       if (fs.existsSync(path.resolve(sourceFolder, 'fonts'))) {
         needsToBeZipped = true
@@ -290,14 +285,11 @@ async function mergeDocuments(
         archive.pipe(output)
         archive.directory(path.resolve(outputFolder), false)
         output.on('close', () => {
-          // console.log(`File saved succesfully.`)
           fs.rmdirSync(tempFolder, { recursive: true })
           resolve(outputDocument.filepath)
         })
         archive.finalize()
-        // is ☝️ async?
       } else {
-        // console.log(`File saved succesfully.`)
         fs.rmdirSync(tempFolder, { recursive: true })
         resolve(outputDocument.filepath)
       }
@@ -321,23 +313,29 @@ function mergeStyles(
     _class: type,
     objects: [],
   }
+  // First, we'll start with the styles from the source document
   combinedStyles.objects = sourceStyles.objects
+
+  // Then we'll add the styles from the theme document
   themeStyles.objects.forEach((themeStyle: FileFormat.SharedStyle) => {
     const matchingStyle = combinedStyles.objects.find(
       (combinedStyle: FileFormat.SharedStyle) => {
         return combinedStyle.name === themeStyle.name
       }
     )
+    // If the style is already in the source document, we'll replace it...
     if (matchingStyle) {
       if (options.reuseStyleID) {
         const originalStyle =
           combinedStyles.objects[combinedStyles.objects.indexOf(matchingStyle)]
         const originalID = originalStyle.do_objectID
+        // We want to use the same ID as the original style
         themeStyle.do_objectID = originalID
       }
       combinedStyles.objects[combinedStyles.objects.indexOf(matchingStyle)] =
         themeStyle
     } else {
+      // ...otherwise we'll add it to the collection
       combinedStyles.objects.push(themeStyle)
     }
   })
@@ -378,21 +376,39 @@ function injectSymbol(
   symbol: FileFormat.SymbolMaster,
   document: SketchFile
 ): SketchFile {
+  // console.log(`Injecting ${symbol.symbolID} (${symbol.name})`)
   let foundSymbol = false
   document.contents.document.pages.forEach((page: FileFormat.Page) => {
-    page.layers.forEach((layer: FileFormat.SymbolMaster) => {
-      if (layer.name === symbol.name && layer._class === 'symbolMaster') {
-        for (const property in symbol) {
-          if (layer.hasOwnProperty(property)) {
-            layer[property] = symbol[property]
+    page.layers.forEach((existingSymbol: FileFormat.SymbolMaster) => {
+      if (
+        existingSymbol.name === symbol.name &&
+        existingSymbol._class === 'symbolMaster'
+      ) {
+        // console.log(`\tSymbol is already in doc, replacing`)
+        const originalSymbolID = existingSymbol.symbolID
+        const originalObjectID = existingSymbol.do_objectID
+        // This is the right way to do it, but it doesn't work
+        for (const property in existingSymbol) {
+          if (existingSymbol.hasOwnProperty(property)) {
+            // console.log(`\t\t${property}`)
+            existingSymbol[property] = symbol[property]
           }
         }
+        // and this is the brute force way to do it:
+        // layer = symbol
+        // TODO: when we inject a new symbol, we need to make sure that the
+        // new symbol maintains the same ID as the original symbol, OR that we
+        // update all references to the original symbol to use the new symbol's ID
+        existingSymbol.do_objectID = originalObjectID
+        existingSymbol.symbolID = originalSymbolID
+        // console.log(`The replaced symbol now has ID: ${originalID}`)
         foundSymbol = true
       }
     })
   })
 
   if (!foundSymbol) {
+    // console.log(`\tSymbol is not in doc, adding`)
     let symbolPage: FileFormat.Page = document.contents.document.pages.find(
       (page) => {
         return page.name === 'Symbols'
@@ -468,87 +484,25 @@ export async function mergeFiles(fileArray: string[]): Promise<string> {
     const themeFile = fileArray[1]
     const outputFile = fileArray[2]
 
+    let newOutputFile = false
+    if (!fs.existsSync(outputFile)) {
+      fs.copyFileSync(sourceFile, outputFile)
+      newOutputFile = true
+    }
+
     fromFile(sourceFile).then((sourceDocument: SketchFile) => {
       fromFile(themeFile).then((themeDocument: SketchFile) => {
-        if (fs.existsSync(outputFile)) {
-          // console.log(`File already exists, so let's read it: ${outputFile}`)
-          fromFile(outputFile).then((document: SketchFile) => {
-            mergeDocuments(sourceDocument, themeDocument, document).then(
-              (output) => {
-                resolve(output)
-              }
-            )
-          })
-        } else {
-          const outputDocument: SketchFile = {
-            filepath: outputFile,
-            // Beware that this is not a clone, but a reference, and changes to the output document will also change the source document
-            // It does not really matter though, as we are only using the output document for writing,
-            // but this could be a problem in other cases
-            contents: sourceDocument.contents,
-            // contents: { ...sourceDocument.contents },
+        fromFile(outputFile).then((outputDocument: SketchFile) => {
+          if (newOutputFile) {
+            outputDocument.contents.document.do_objectID =
+              uuidv4().toUpperCase()
           }
-          // The fact that we have to clone all this stuff here makes me incredibly nervous
-          // TODO: see if we lose data if we don't copy all of these. In particular, the userInfo and workspace data is vital
-          // outputDocument.contents.user = {
-          //   ...sourceDocument.contents.user,
-          // }
-          // outputDocument.contents.meta = {
-          //   ...sourceDocument.contents.meta,
-          // }
-          // outputDocument.contents.workspace = {
-          //   ...sourceDocument.contents.workspace,
-          // }
-          // outputDocument.contents.document = {
-          //   ...sourceDocument.contents.document,
-          // }
-          // outputDocument.contents.document.pages = {
-          //   ...sourceDocument.contents.document.pages,
-          // }
-
-          // Use a new ID for the output document, otherwise Sketch will get confused
-          // and think it's a duplicate of the source document. We're going to combine
-          // the uuid of the source document with the uuid of the theme document, to get
-          // a unique (but repeatable) ID for the output document.
-          // Unsurprisingly, this doesn't work
-          // const sourceUUID = sourceDocument.contents.document.do_objectID
-          // const themeUUID = themeDocument.contents.document.do_objectID
-          // const sourceUUIDBytes = uuidParse(sourceUUID)
-          // const themeUUIDBytes = uuidParse(themeUUID)
-          // let outputUUIDBytes = []
-          // for (let i = 0; i < 8; i++) {
-          //   outputUUIDBytes.push(sourceUUIDBytes[i])
-          // }
-          // for (let i = 0; i < 8; i++) {
-          //   outputUUIDBytes.push(themeUUIDBytes[i])
-          // }
-          // outputDocument.contents.document.do_objectID = uuidStringify(outputUUIDBytes)
-          // Meanwhile, we'll just use a random uuid and assume that if the ID is relevant,
-          // they will upload an output file.
-          console.log(
-            `Original ID for source document: ${sourceDocument.contents.document.do_objectID}`
-          )
-          outputDocument.contents.document.do_objectID = uuidv4().toUpperCase()
-          // console.log(
-          //   sourceDocument.contents.document ===
-          //     outputDocument.contents.document
-          // )
-          // console.log(
-          //   `Original ID for output document: ${outputDocument.contents.document.do_objectID}`
-          // )
-          // outputDocument.contents.document.do_objectID = uuidv4().toUpperCase()
-          // console.log(
-          //   `New ID for source document: ${sourceDocument.contents.document.do_objectID}`
-          // )
-          console.log(
-            `New ID for output document: ${outputDocument.contents.document.do_objectID}`
-          )
           mergeDocuments(sourceDocument, themeDocument, outputDocument).then(
-            (outputFile) => {
-              resolve(outputFile)
+            (output) => {
+              resolve(output)
             }
           )
-        }
+        })
       })
     })
   })
@@ -570,7 +524,9 @@ function matchingSwatchForColorInSwatches(
   color: FileFormat.Color,
   swatches: FileFormat.SwatchContainer
 ): FileFormat.Swatch {
+  // console.log(`Looking for a matching swatch for ${color}`)
   return swatches.objects.find((swatch) => {
+    // console.log(JSON.stringify(swatch))
     //return colorsAreEqual(swatch.value, color)
     return swatch.do_objectID === color.swatchID
   })
@@ -580,7 +536,6 @@ function cleanupColorsInLayer(
   layer: any,
   swatches: FileFormat.SwatchContainer
 ) {
-  // console.log(`Updating layer: ${layer.name}`)
   if (
     layer._class == 'artboard' ||
     layer._class == 'symbolMaster' ||
@@ -594,10 +549,26 @@ function cleanupColorsInLayer(
   // TODO: not sure this is taking care of gradient fills...
   layer.style?.fills?.forEach((fill: FileFormat.Fill) => {
     if (fill.color.swatchID !== undefined) {
+      // console.log(`Found a layer with a swatch fill: ${fill.color.swatchID}`)
       const matchingSwatch = matchingSwatchForColorInSwatches(
         fill.color,
         swatches
       )
+      // console.log(
+      //   `The color for that Swatch is: ${JSON.stringify(matchingSwatch.value)}`
+      // )
+      // console.log(`The color for the Layer is: ${JSON.stringify(fill.color)}`)
+      if (layer.name == 'Default / Default') {
+        console.log(`This one won't change its color`)
+        console.log(layer.sharedStyleID)
+        console.log(JSON.stringify(fill.color))
+        console.log(JSON.stringify(matchingSwatch))
+        //   console.log(`Found a matching swatch for ${layer.name} fill`)
+        //   console.log(`\tBut are the colors equal?`)
+        //   console.log(`\t${colorsAreEqual(matchingSwatch.value, fill.color)}`)
+        //   console.log(`\t${JSON.stringify(matchingSwatch.value)}`)
+        //   console.log(`\t${JSON.stringify(fill.color)}`)
+      }
       if (matchingSwatch && !colorsAreEqual(fill.color, matchingSwatch.value)) {
         fill.color = {
           ...matchingSwatch.value,
@@ -618,6 +589,7 @@ function cleanupColorsInLayer(
         matchingSwatch &&
         !colorsAreEqual(border.color, matchingSwatch.value)
       ) {
+        console.log(`Found a matching swatch for ${layer.name}'s border`)
         border.color = {
           ...matchingSwatch.value,
           swatchID: matchingSwatch.do_objectID,
@@ -665,21 +637,18 @@ function cleanupColorsInLayer(
   })
 
   // - Update text colors
-  if (layer._class === 'text') {
-    const attributes = layer.attributedString.attributes
-    attributes.forEach((attribute) => {
-      const color = attribute.attributes.MSAttributedStringColorAttribute
-      if (color.swatchID !== undefined) {
-        const matchingSwatch = matchingSwatchForColorInSwatches(color, swatches)
-        if (matchingSwatch && !colorsAreEqual(color, matchingSwatch.value)) {
-          attribute.attributes.MSAttributedStringColorAttribute = {
-            ...matchingSwatch.value,
-            swatchID: matchingSwatch.do_objectID,
-          }
+  layer.attributedString?.attributes?.forEach((attribute) => {
+    const color = attribute.attributes.MSAttributedStringColorAttribute
+    if (color && color.swatchID !== undefined) {
+      const matchingSwatch = matchingSwatchForColorInSwatches(color, swatches)
+      if (matchingSwatch && !colorsAreEqual(color, matchingSwatch.value)) {
+        attribute.attributes.MSAttributedStringColorAttribute = {
+          ...matchingSwatch.value,
+          swatchID: matchingSwatch.do_objectID,
         }
       }
-    })
-  }
+    }
+  })
 
   // - Update Artboard and Slice backgrounds
   if (
@@ -702,17 +671,121 @@ function cleanupColorsInLayer(
   return layer
 }
 
-function injectDynamicData(layer: FileFormat.Text, data) {
-  const text = layer.attributedString.string
-  Object.keys(data).forEach((key) => {
-    const match = `%%${key}%%`
-    if (text.includes(match)) {
-      const value = data[key]
-      layer.attributedString.string = text.replace(match, value)
-      // TODO: fix this hack, because it only works for text layers with a single style
-      layer.attributedString.attributes[0].length =
-        layer.attributedString.string.length
-    }
-  })
+function injectDynamicData(layer: any, data: object) {
+  if (
+    layer._class == 'artboard' ||
+    layer._class == 'symbolMaster' ||
+    layer._class == 'group'
+  ) {
+    layer.layers.forEach((sublayer) => {
+      sublayer = injectDynamicData(sublayer, data)
+    })
+  }
+  if (layer._class === 'text') {
+    let text = layer.attributedString.string
+    Object.keys(data).forEach((key) => {
+      const match = `%%${key}%%`
+      const replacement = text.replace(match, data[key])
+      if (text.includes(match)) {
+        layer.attributedString.string = replacement
+        // TODO: fix this hack, because it only works for text layers with a single style
+        layer.attributedString.attributes[0].length =
+          layer.attributedString.string.length
+        text = replacement
+      }
+    })
+  }
   return layer
+}
+
+function emptyDocument(): FileFormat.Document {
+  return {
+    pages: [],
+    _class: 'document',
+    do_objectID: uuidv4(),
+    currentPageIndex: 0,
+    assets: {
+      _class: 'assetCollection',
+      do_objectID: uuidv4(),
+      colorAssets: [],
+      colors: [],
+      exportPresets: [],
+      gradientAssets: [],
+      gradients: [],
+      images: [],
+    },
+    colorSpace: ColorSpace.Unmanaged,
+    foreignSymbols: [],
+    layerStyles: {
+      _class: 'sharedStyleContainer',
+      objects: [],
+    },
+    layerTextStyles: {
+      _class: 'sharedTextStyleContainer',
+      objects: [],
+    },
+    foreignLayerStyles: [],
+    foreignTextStyles: [],
+  }
+}
+
+function emptyFile(filePath): SketchFile {
+  const fileCommit = 'da3a810344f01b8f82ff1686c8c6e334062f75ce'
+  const meta: FileFormat.Meta = {
+    app: FileFormat.BundleId.PublicRelease,
+    appVersion: '77',
+    autosaved: 0,
+    build: 131065,
+    commit: fileCommit,
+    compatibilityVersion: 99,
+    pagesAndArtboards: {},
+    saveHistory: [],
+    variant: 'NONAPPSTORE',
+    version: 136,
+    created: {
+      app: FileFormat.BundleId.PublicRelease,
+      appVersion: '77',
+      build: 131065,
+      commit: fileCommit,
+      compatibilityVersion: 99,
+      variant: 'NONAPPSTORE',
+      version: 136,
+    },
+  }
+  const user: FileFormat.User = {
+    document: { pageListHeight: 85, pageListCollapsed: 0 },
+  }
+  const workspace: FileFormat.Workspace = {}
+  const contents: FileFormat.Contents = {
+    document: {
+      _class: 'document',
+      do_objectID: uuidv4(),
+      colorSpace: 0,
+      currentPageIndex: 0,
+      assets: {
+        _class: 'assetCollection',
+        do_objectID: uuidv4(),
+        images: [],
+        colorAssets: [],
+        exportPresets: [],
+        gradientAssets: [],
+        colors: [],
+        gradients: [],
+      },
+      foreignLayerStyles: [],
+      foreignSymbols: [],
+      foreignTextStyles: [],
+      layerStyles: { _class: 'sharedStyleContainer', objects: [] },
+      layerSymbols: { _class: 'symbolContainer', objects: [] },
+      layerTextStyles: { _class: 'sharedTextStyleContainer', objects: [] },
+      pages: [],
+    },
+    meta,
+    user,
+    workspace,
+  }
+  return {
+    filepath: filePath,
+    contents: contents,
+  }
 }
