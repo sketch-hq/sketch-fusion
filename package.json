@@ -19,7 +19,7 @@
   "author": "Ale Muñoz",
   "license": "MIT",
   "dependencies": {
-    "@sketch-hq/sketch-file": "file:../../sketch-document/packages/file",
+    "@sketch-hq/sketch-file": "^1.1.0",
     "@sketch-hq/sketch-file-format-ts": "^6.1.1",
     "@types/node": "^16.11.7",
     "adm-zip": "^0.5.9",
