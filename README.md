@@ -3,9 +3,18 @@
 Sketch Fusion applies themes to Design System documents.
 To do this, it replaces styles, colors or symbols in a source document with those defined in a theme file.
 
-## Requirements
+We have a demo running at [https://fusion.sketchplugins.com](https://fusion.sketchplugins.com) if you want to try it out without installing anything.
 
-Sketch Fusion works on any system with `node.js` installed, and does not need Sketch installed. We have included a GitHub Action in this repository, which you can use to run it automatically on your own repository.
+## Requirements and Setup
+
+Sketch Fusion works on any system with `node.js` installed, and does not need Sketch installed. You can even run it on GitHub Actions using the template provided in `.github/workflows/fusion.yml`.
+
+To run the project locally, follow these steps:
+
+1. Open a terminal, and clone the repo using `git clone https://github.com/sketch-hq/sketch-fusion`
+2. `cd sketch-fusion`
+3. Run `npm install` to install all dependencies.
+4. Run `npm run web` to start the web server. It should be available at <http://localhost:3000/>
 
 ## How it works
 
@@ -16,17 +25,3 @@ To use Sketch Fusion, you need these files:
 - `output.sketch`: optionally, you can reuse an existing Sketch document to save the results to. This is highly discouraged, as it breaks the single source of truth principle, but is useful in some scenarios. For example, if you already have a file you've created using Camilo or another tool, you can use it as the output document. Otherwise, Sketch Fusion will create it automatically.
 
 Sketch Fusion will ignore any extra information in the theme file.
-
-Once you have the files, you can run the following commands:
-
-```bash
-npm install
-```
-
-to install the dependencies. And then
-
-```bash
-npm start
-```
-
-to run the tool and generate the output.
