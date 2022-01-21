@@ -14,16 +14,6 @@ async function mergeDocuments(
   themeDocument: SketchFile,
   outputDocument: SketchFile
 ): Promise<string> {
-  console.log('Merging documents:')
-  console.log(
-    `  Source: ${sourceDocument.filepath}, ID: ${sourceDocument.contents.document.do_objectID}`
-  )
-  console.log(
-    `  Theme: ${themeDocument.filepath}, ID: ${themeDocument.contents.document.do_objectID}`
-  )
-  console.log(
-    `  Output: ${outputDocument.filepath}, ID: ${outputDocument.contents.document.do_objectID}`
-  )
   // 1. Merge Layer Styles
   // console.log(`Merging Layer Styles`)
   outputDocument.contents.document.layerStyles = mergeStyles(
@@ -237,10 +227,6 @@ async function mergeDocuments(
       }
     }
   })
-
-  console.log(
-    `We are now going to save ${outputDocument.filepath} (or at least try)`
-  )
 
   return new Promise((resolve, reject) => {
     toFile(outputDocument).then(() => {
@@ -554,21 +540,6 @@ function cleanupColorsInLayer(
         fill.color,
         swatches
       )
-      // console.log(
-      //   `The color for that Swatch is: ${JSON.stringify(matchingSwatch.value)}`
-      // )
-      // console.log(`The color for the Layer is: ${JSON.stringify(fill.color)}`)
-      if (layer.name == 'Default / Default') {
-        console.log(`This one won't change its color`)
-        console.log(layer.sharedStyleID)
-        console.log(JSON.stringify(fill.color))
-        console.log(JSON.stringify(matchingSwatch))
-        //   console.log(`Found a matching swatch for ${layer.name} fill`)
-        //   console.log(`\tBut are the colors equal?`)
-        //   console.log(`\t${colorsAreEqual(matchingSwatch.value, fill.color)}`)
-        //   console.log(`\t${JSON.stringify(matchingSwatch.value)}`)
-        //   console.log(`\t${JSON.stringify(fill.color)}`)
-      }
       if (matchingSwatch && !colorsAreEqual(fill.color, matchingSwatch.value)) {
         fill.color = {
           ...matchingSwatch.value,
@@ -589,7 +560,7 @@ function cleanupColorsInLayer(
         matchingSwatch &&
         !colorsAreEqual(border.color, matchingSwatch.value)
       ) {
-        console.log(`Found a matching swatch for ${layer.name}'s border`)
+        // console.log(`Found a matching swatch for ${layer.name}'s border`)
         border.color = {
           ...matchingSwatch.value,
           swatchID: matchingSwatch.do_objectID,

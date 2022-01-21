@@ -62,26 +62,20 @@ app.post('/upload', (req, res) => {
                     res.status(500).send('Error moving output file.')
                     return
                   }
-                  console.log(`Output file provided, so let's use it`)
 
                   filesToMerge.push(
                     path.resolve(fuseFolder, req.files.outputFile.name)
                   )
                   mergeFiles(filesToMerge).then((filepath) => {
-                    console.log(`Starting download`)
                     res.download(filepath)
                   })
                 }
               )
             } else {
-              console.log(
-                `No output file provided, so we'll just merge the files.`
-              )
               filesToMerge.push(
                 path.resolve(fuseFolder, `output-${Date.now()}.sketch`)
               )
               mergeFiles(filesToMerge).then((filepath) => {
-                console.log(`Starting download`)
                 res.download(filepath)
               })
             }
