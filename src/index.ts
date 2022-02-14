@@ -362,6 +362,7 @@ function injectSymbol(
   symbol: FileFormat.SymbolMaster,
   document: SketchFile
 ): SketchFile {
+  const symbolPageName = 'Symbols'
   // console.log(`Injecting ${symbol.symbolID} (${symbol.name})`)
   let foundSymbol = false
   document.contents.document.pages.forEach((page: FileFormat.Page) => {
@@ -394,15 +395,16 @@ function injectSymbol(
   })
 
   if (!foundSymbol) {
-    // console.log(`\tSymbol is not in doc, adding`)
+    console.log(`\tSymbol "${symbol.name}" is not in doc, adding`)
     let symbolPage: FileFormat.Page = document.contents.document.pages.find(
       (page) => {
-        return page.name === 'Symbols'
+        return page.name === symbolPageName
       }
     )
     if (!symbolPage) {
+      console.log(`\t\tCreating symbol page "${symbolPageName}"`)
       const newPage: FileFormat.Page = {
-        name: 'Symbols',
+        name: symbolPageName,
         layers: [],
         _class: 'page',
         do_objectID: uuidv4(),
@@ -442,20 +444,23 @@ function injectSymbol(
       }
       document.contents.document.pages.push(newPage)
       symbolPage = document.contents.document.pages.find((page) => {
-        return page.name === 'Symbols'
+        return page.name === symbolPageName
       })
     }
 
-    // TODO: use a smarter way to find the right position to insert the symbol
-    let maxX = -Infinity
-    let maxY = -Infinity
-    symbolPage.layers.forEach((layer: FileFormat.AnyLayer) => {
-      maxX = Math.max(maxX, layer.frame.x + layer.frame.width)
-      maxY = Math.max(maxY, layer.frame.y + layer.frame.height)
-    })
+    console.log(
+      `\t\tAdding symbol "${symbol.name}" to page "${symbolPage.name}"`
+    )
 
-    symbol.frame.x = maxX + 20
-    symbol.frame.y = maxY + 20
+    // TODO: Find a way to insert the symbol in the right position in the page
+    // let maxX = -Infinity
+    // let maxY = -Infinity
+    // symbolPage.layers.forEach((layer: FileFormat.AnyLayer) => {
+    //   maxX = Math.max(maxX, layer.frame.x + layer.frame.width)
+    //   maxY = Math.max(maxY, layer.frame.y + layer.frame.height)
+    // })
+    // symbol.frame.x = maxX + 20
+    // symbol.frame.y = maxY + 20
     symbolPage.layers.push(symbol)
   }
   return document
@@ -655,11 +660,11 @@ function injectDynamicData(layer: any, data: object) {
   if (layer._class === 'text') {
     let text = layer.attributedString.string
     Object.keys(data).forEach((key) => {
-      const match = `%%${key}%%`
+      const match = `{{${key}}}`
       const replacement = text.replace(match, data[key])
       if (text.includes(match)) {
         layer.attributedString.string = replacement
-        // TODO: fix this hack, because it only works for text layers with a single style
+        // TODO: This only works for text layers with a single style
         layer.attributedString.attributes[0].length =
           layer.attributedString.string.length
         text = replacement
