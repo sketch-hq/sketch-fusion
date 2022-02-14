@@ -25,3 +25,7 @@ To use Sketch Fusion, you need these files:
 - `output.sketch`: optionally, you can reuse an existing Sketch document to save the results to. This is highly discouraged, as it breaks the single source of truth principle, but is useful in some scenarios. For example, if you already have a file you've created using Camilo or another tool, you can use it as the output document. Otherwise, Sketch Fusion will create it automatically.
 
 Sketch Fusion will ignore any extra information in the theme file.
+
+## Replacing Workspace documents
+
+To replace an existing Workspace document, open the output from Fusion in Sketch and click the "Collaborate" icon. Sketch will ask if you want to overwrite an existing Workspace document. Select the document you want to overwrite, and Sketch will replace the document in the Workspace with your new version.
