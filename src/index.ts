@@ -41,7 +41,6 @@ async function mergeDocuments(
   // console.log(`Merging Symbols`)
   // First, inject the symbols from the source document, as they may have changed:
   // TODO: we can skip this step if we're not using the output document
-  // I am commenting this out for now, because it breaks my demo
   sourceDocument.contents.document.pages.forEach((page: FileFormat.Page) => {
     page.layers.forEach((symbol: FileFormat.SymbolMaster) => {
       if (symbol._class === 'symbolMaster') {
@@ -363,7 +362,7 @@ function injectSymbol(
   document: SketchFile
 ): SketchFile {
   const symbolPageName = 'Symbols'
-  // console.log(`Injecting ${symbol.symbolID} (${symbol.name})`)
+  console.log(`Injecting ${symbol.symbolID} (${symbol.name})`)
   let foundSymbol = false
   document.contents.document.pages.forEach((page: FileFormat.Page) => {
     page.layers.forEach((existingSymbol: FileFormat.SymbolMaster) => {
@@ -371,24 +370,36 @@ function injectSymbol(
         existingSymbol.name === symbol.name &&
         existingSymbol._class === 'symbolMaster'
       ) {
-        // console.log(`\tSymbol is already in doc, replacing`)
         const originalSymbolID = existingSymbol.symbolID
         const originalObjectID = existingSymbol.do_objectID
-        // This is the right way to do it, but it doesn't work
+
+        document.contents.document.pages.forEach((page) => {
+          page.layers.forEach((layer: FileFormat.SymbolInstance) => {
+            if (
+              layer._class === 'symbolInstance' &&
+              layer.symbolID === originalSymbolID
+            ) {
+              // for all the instances of the symbol we're updating,
+              // make sure their overrides now point to the layer IDs
+              // of the new symbol
+              // TODO: test that this works for all types of overrides
+              layer.overrideValues.forEach((overrideValue) => {
+                overrideValue.overrideName = newOverrideName(
+                  overrideValue.overrideName,
+                  symbol,
+                  existingSymbol
+                )
+              })
+              layer.symbolID = symbol.symbolID
+            }
+          })
+        })
+
         for (const property in existingSymbol) {
           if (existingSymbol.hasOwnProperty(property)) {
-            // console.log(`\t\t${property}`)
             existingSymbol[property] = symbol[property]
           }
         }
-        // and this is the brute force way to do it:
-        // layer = symbol
-        // TODO: when we inject a new symbol, we need to make sure that the
-        // new symbol maintains the same ID as the original symbol, OR that we
-        // update all references to the original symbol to use the new symbol's ID
-        existingSymbol.do_objectID = originalObjectID
-        existingSymbol.symbolID = originalSymbolID
-        // console.log(`The replaced symbol now has ID: ${originalID}`)
         foundSymbol = true
       }
     })
@@ -670,6 +681,50 @@ function injectDynamicData(layer: any, data: object) {
         text = replacement
       }
     })
+    // Special keywords: {{date}} and {{time}}
+    if (text.includes('{{date}}')) {
+      layer.attributedString.string = text.replace(
+        '{{date}}',
+        new Date().toDateString()
+      )
+      // TODO: this looks like it could be extracted into a function
+      layer.attributedString.attributes[0].length =
+        layer.attributedString.string.length
+      // console.log(JSON.stringify(layer)) // let's see what's here...
+      // layer.frame = {} // This crashes Sketch 😬
+      /**
+       * {"_class":"text","do_objectID":"D8D66684-659C-496B-95F0-3BE156354E35","booleanOperation":-1,"isFixedToViewport":false,"isFlippedHorizontal":false,"isFlippedVertical":false,"isLocked":false,"isVisible":true,"layerListExpandedType":0,"name":"Dynamic data: {{date","nameIsFixed":false,"resizingConstraint":47,"resizingType":0,"rotation":0,"shouldBreakMaskChain":false,"exportOptions":{"_class":"exportOptions","includedLayerIds":[],"layerOptions":0,"shouldTrim":false,"exportFormats":[]},"frame":{"_class":"rect","constrainProportions":false,"height":37,"width":322,"x":142,"y":309},"clippingMaskMode":0,"hasClippingMask":false,"style":{"_class":"style","do_objectID":"D630F931-674F-49EF-A372-7E3BE5AB3DF8","endMarkerType":0,"miterLimit":10,"startMarkerType":0,"windingRule":1,"blur":{"_class":"blur","isEnabled":false,"center":"{0.5, 0.5}","motionAngle":0,"radius":10,"saturation":1,"type":0},"borderOptions":{"_class":"borderOptions","isEnabled":true,"dashPattern":[],"lineCapStyle":0,"lineJoinStyle":0},"borders":[],"colorControls":{"_class":"colorControls","isEnabled":false,"brightness":0,"contrast":1,"hue":0,"saturation":1},"contextSettings":{"_class":"graphicsContextSettings","blendMode":0,"opacity":1},"fills":[],"innerShadows":[],"shadows":[],"textStyle":{"_class":"textStyle","encodedAttributes":{"MSAttributedStringFontAttribute":{"_class":"fontDescriptor","attributes":{"name":"HelveticaNeue","size":32}},"paragraphStyle":{"_class":"paragraphStyle","alignment":0},"MSAttributedStringColorAttribute":{"_class":"color","alpha":1,"blue":0.2,"green":0.2,"red":0.2},"textStyleVerticalAlignmentKey":0,"kerning":0},"verticalAlignment":0}},"attributedString":{"_class":"attributedString","string":"Dynamic data: Tue Feb 15 2022","attributes":[{"_class":"stringAttribute","location":0,"length":29,"attributes":{"MSAttributedStringFontAttribute":{"_class":"fontDescriptor","attributes":{"name":"HelveticaNeue","size":32}},"MSAttributedStringColorAttribute":{"_class":"color","alpha":1,"blue":0.2,"green":0.2,"red":0.2},"kerning":0,"textStyleVerticalAlignmentKey":0,"paragraphStyle":{"_class":"paragraphStyle","alignment":0}}}]},"automaticallyDrawOnUnderlyingPath":false,"dontSynchroniseWithSymbol":false,"glyphBounds":"{{2, 6}, {318, 31}}","lineSpacingBehaviour":3,"textBehaviour":0}
+       */
+    }
   }
+  // TODO: adjust layer size based on text size. Not sure how we can do this from the file format... Maybe mark the layer as needing a resize somehow?
   return layer
+}
+
+function newOverrideName(
+  oldOverrideName: string,
+  newSymbol: FileFormat.SymbolMaster,
+  oldSymbol: FileFormat.SymbolMaster
+): string {
+  console.log(
+    `newOverrideName(${oldOverrideName}, ${newSymbol.name}, ${oldSymbol.name})`
+  )
+
+  const oldLayerID = oldOverrideName.split('_')[0]
+  const oldLayerType = oldOverrideName.split('_')[1]
+  const oldLayerName = oldSymbol.layers.filter(
+    (layer) => layer.do_objectID === oldLayerID
+  )[0]?.name
+  // console.log(`oldLayerName: ${oldLayerName}`)
+
+  const newLayerID = newSymbol.layers.filter(
+    (layer) => layer.name === oldLayerName
+  )[0]?.do_objectID
+  // console.log(`newLayerID: ${newLayerID}`)
+
+  if (!newLayerID) {
+    return oldOverrideName
+  } else {
+    return newLayerID + '_' + oldLayerType
+  }
 }
