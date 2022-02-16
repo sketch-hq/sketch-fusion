@@ -9,9 +9,7 @@
     "tool": "tsc && node tool.js",
     "basic": "tsc && node tool.js 0_source.sketch 1_theme.sketch 2_output.sketch",
     "two": "tsc && rm -f 2_output.sketch && node tool.js 0_source.sketch 1_theme.sketch",
-    "open": "rm -f 2_output.sketch && npm run basic && open 2_output.sketch -a Sketch.app",
-    "airbus": "tsc && node tool.js 0_ui_kit_source.sketch 1_ui_kit_theme.sketch 2_ui_kit_output.sketch",
-    "airbus-opt": "tsc && node tool.js 0_ui_kit_source.sketch 1_ui_kit_theme.sketch"
+    "open": "rm -f 2_output.sketch && npm run basic && open 2_output.sketch -a Sketch.app"
   },
   "keywords": [
     "sketchapp"
@@ -19,20 +17,20 @@
   "author": "Ale Muñoz",
   "license": "MIT",
   "dependencies": {
-    "@sketch-hq/sketch-file": "^1.1.0",
-    "@sketch-hq/sketch-file-format-ts": "^6.2.0",
-    "@types/node": "^16.11.7",
-    "adm-zip": "^0.5.9",
-    "archiver": "^5.3.0",
-    "express": "^4.17.1",
-    "express-fileupload": "^1.2.1",
-    "path": "^0.12.7",
-    "typescript": "^4.4.4",
-    "uuid": "^8.3.2"
+    "@sketch-hq/sketch-file": "1.1.0",
+    "@sketch-hq/sketch-file-format-ts": "6.2.0",
+    "@types/node": "16.11.7",
+    "adm-zip": "0.5.9",
+    "archiver": "5.3.0",
+    "express": "4.17.1",
+    "express-fileupload": "1.2.1",
+    "path": "0.12.7",
+    "typescript": "4.4.4",
+    "uuid": "8.3.2"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.4.34",
-    "@types/archiver": "^5.1.1",
-    "@types/uuid": "^8.3.3"
+    "@types/adm-zip": "0.4.34",
+    "@types/archiver": "5.1.1",
+    "@types/uuid": "8.3.3"
   }
 }
