@@ -78,6 +78,7 @@ export async function mergeDocuments(
     })
   })
   // 6. Update layer styles
+  console.log(`\n\n6. Updating layer styles`)
   outputDocument.contents.document.layerStyles.objects.forEach((style) => {
     style.value.fills?.forEach((fill) => {
       if (fill.color.swatchID !== undefined) {
@@ -149,11 +150,12 @@ export async function mergeDocuments(
     })
   })
   // 7. Update text styles
+  console.log(`\n\n7. Updating text styles`)
   outputDocument.contents.document.layerTextStyles.objects.forEach((style) => {
-    // console.log(`Updating Text Style: ${style.name}`)
-    // console.log(style.value)
+    console.log(style.name)
+    console.log(`\tFills`)
     style.value.fills?.forEach((fill) => {
-      if (fill.color.swatchID !== undefined) {
+      if (fill.color && fill.color.swatchID !== undefined) {
         const matchingSwatch = matchingSwatchForColorInSwatches(
           fill.color,
           swatches
@@ -169,6 +171,7 @@ export async function mergeDocuments(
         }
       }
     })
+    console.log(`\tBorders`)
     style.value.borders?.forEach((border) => {
       if (border.color.swatchID !== undefined) {
         const matchingSwatch = matchingSwatchForColorInSwatches(
@@ -186,6 +189,7 @@ export async function mergeDocuments(
         }
       }
     })
+    console.log(`\tShadows`)
     style.value.shadows?.forEach((shadow) => {
       if (shadow.color.swatchID !== undefined) {
         const matchingSwatch = matchingSwatchForColorInSwatches(
@@ -203,6 +207,7 @@ export async function mergeDocuments(
         }
       }
     })
+    console.log(`\tInner Shadows`)
     style.value.innerShadows?.forEach((shadow) => {
       if (shadow.color.swatchID !== undefined) {
         const matchingSwatch = matchingSwatchForColorInSwatches(
@@ -221,9 +226,10 @@ export async function mergeDocuments(
       }
     })
 
+    console.log(`\tText`)
     const textColor: FileFormat.Color =
       style.value.textStyle.encodedAttributes.MSAttributedStringColorAttribute
-    if (textColor.swatchID !== undefined) {
+    if (textColor?.swatchID !== undefined) {
       const matchingSwatch = matchingSwatchForColorInSwatches(
         textColor,
         swatches

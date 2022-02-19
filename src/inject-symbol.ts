@@ -17,7 +17,7 @@ export function injectSymbol(
         existingSymbol._class === 'symbolMaster'
       ) {
         const originalSymbolID = existingSymbol.symbolID
-        const originalObjectID = existingSymbol.do_objectID
+        // const originalObjectID = existingSymbol.do_objectID
 
         document.contents.document.pages.forEach((page) => {
           page.layers.forEach((layer: FileFormat.SymbolInstance) => {
