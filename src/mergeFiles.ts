@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { mergeDocuments } from './mergeDocuments'
 
 export async function mergeFiles(fileArray: string[]): Promise<string> {
-  // TODO: pass the options object in here
+  // TODO: ↓↓ pass the options object in here
   // console.log(`Merging ${fileArray.length} files:`)
   // console.log(fileArray)
   return new Promise((resolve, reject) => {

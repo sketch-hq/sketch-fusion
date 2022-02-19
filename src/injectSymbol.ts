@@ -2,58 +2,54 @@ import FileFormat from '@sketch-hq/sketch-file-format-ts'
 import { SketchFile } from '@sketch-hq/sketch-file'
 import { v4 as uuidv4 } from 'uuid'
 import newOverrideName from './new-override-name'
+import { allLayers } from './allLayers'
 
 export function injectSymbol(
-  symbol: FileFormat.SymbolMaster,
+  newSymbol: FileFormat.SymbolMaster,
   document: SketchFile
 ): SketchFile {
   const symbolPageName = 'Symbols'
-  console.log(`Injecting ${symbol.symbolID} (${symbol.name})`)
   let foundSymbol = false
-  document.contents.document.pages.forEach((page: FileFormat.Page) => {
-    page.layers.forEach((existingSymbol: FileFormat.SymbolMaster) => {
-      if (
-        existingSymbol.name === symbol.name &&
-        existingSymbol._class === 'symbolMaster'
-      ) {
-        const originalSymbolID = existingSymbol.symbolID
-        // const originalObjectID = existingSymbol.do_objectID
-
-        document.contents.document.pages.forEach((page) => {
-          page.layers.forEach((layer: FileFormat.SymbolInstance) => {
-            if (
-              layer._class === 'symbolInstance' &&
-              layer.symbolID === originalSymbolID
-            ) {
-              // for all the instances of the symbol we're updating,
-              // make sure their overrides now point to the layer IDs
-              // of the new symbol
-              // TODO: test that this works for all types of overrides -> Seems to work for symbols, need to check tint / image / styles / hotspots
-              // TODO: test that this works for *nested* overrides -> It doesn't :(
-              layer.overrideValues.forEach((overrideValue) => {
-                overrideValue.overrideName = newOverrideName(
-                  overrideValue.overrideName,
-                  symbol,
-                  existingSymbol
-                )
-              })
-              layer.symbolID = symbol.symbolID
-            }
-          })
-        })
-
-        for (const property in existingSymbol) {
-          if (existingSymbol.hasOwnProperty(property)) {
-            existingSymbol[property] = symbol[property]
-          }
+  allLayers(document).forEach((existingSymbol) => {
+    // We only want to replace Symbol Masters with the same name
+    if (
+      existingSymbol.name === newSymbol.name &&
+      existingSymbol._class === 'symbolMaster'
+    ) {
+      const originalSymbolID = existingSymbol.symbolID
+      // const originalObjectID = existingSymbol.do_objectID
+      allLayers(document).forEach((layer) => {
+        if (
+          layer._class === 'symbolInstance' &&
+          layer.symbolID === originalSymbolID
+        ) {
+          layer.symbolID = newSymbol.symbolID
         }
-        foundSymbol = true
+
+        // for all the instances of the symbol we're updating,
+        // make sure their overrides now point to the layer IDs
+        // of the new symbol
+        // TODO: ↑↑ fix nested overrides
+        layer.overrideValues?.forEach((overrideValue) => {
+          overrideValue.overrideName = newOverrideName(
+            overrideValue.overrideName,
+            newSymbol,
+            existingSymbol
+          )
+        })
+      })
+
+      for (const property in existingSymbol) {
+        if (existingSymbol.hasOwnProperty(property)) {
+          existingSymbol[property] = newSymbol[property]
+        }
       }
-    })
+      foundSymbol = true
+    }
   })
 
   if (!foundSymbol) {
-    console.log(`\tSymbol "${symbol.name}" is not in doc, adding`)
+    console.log(`\tSymbol "${newSymbol.name}" is not in doc, adding`)
     let symbolPage: FileFormat.Page = document.contents.document.pages.find(
       (page) => {
         return page.name === symbolPageName
@@ -107,10 +103,10 @@ export function injectSymbol(
     }
 
     console.log(
-      `\t\tAdding symbol "${symbol.name}" to page "${symbolPage.name}"`
+      `\t\tAdding symbol "${newSymbol.name}" to page "${symbolPage.name}"`
     )
 
-    // TODO: Find a way to insert the symbol in the right position in the page
+    // TODO: ↓↓ Find a way to insert the symbol in the right position in the page
     // let maxX = -Infinity
     // let maxY = -Infinity
     // symbolPage.layers.forEach((layer: FileFormat.AnyLayer) => {
@@ -119,7 +115,7 @@ export function injectSymbol(
     // })
     // symbol.frame.x = maxX + 20
     // symbol.frame.y = maxY + 20
-    symbolPage.layers.push(symbol)
+    symbolPage.layers.push(newSymbol)
   }
   return document
 }

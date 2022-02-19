@@ -5,9 +5,9 @@ export default function (
   newSymbol: FileFormat.SymbolMaster,
   oldSymbol: FileFormat.SymbolMaster
 ): string {
-  console.log(
-    `newOverrideName(${oldOverrideName}, ${newSymbol.name}, ${oldSymbol.name})`
-  )
+  // console.log(
+  //   `newOverrideName(${oldOverrideName}, ${newSymbol.name}, ${oldSymbol.name})`
+  // )
 
   const oldLayerID = oldOverrideName.split('_')[0]
   const oldLayerType = oldOverrideName.split('_')[1]

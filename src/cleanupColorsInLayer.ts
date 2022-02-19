@@ -6,7 +6,7 @@ export function cleanupColorsInLayer(
   layer: any,
   swatches: FileFormat.SwatchContainer
 ) {
-  console.log(`\n\nCleaning up colors in layer ${layer.name}`)
+  // console.log(`\n\nCleaning up colors in layer ${layer.name}`)
 
   if (
     layer._class == 'artboard' ||
@@ -19,14 +19,12 @@ export function cleanupColorsInLayer(
   }
 
   // 1. Update fills & tints
-  // TODO: not sure this is taking care of gradient fills...
-  console.log(`\tChecking fills and tints`)
+  // console.log(`\t1. Fills and tints`)
   layer.style?.fills?.forEach((fill: FileFormat.Fill) => {
-    // console.log(fill)
     switch (fill.fillType) {
       case 0:
         // Color
-        console.log(`Fill is a color`)
+        // console.log(`\t\tFill is a color`)
         if (fill.color.swatchID !== undefined) {
           const matchingSwatch = matchingSwatchForColorInSwatches(
             fill.color,
@@ -45,19 +43,21 @@ export function cleanupColorsInLayer(
         break
       case 1:
         // Gradient
-        console.log(`\t\tFill is a gradient, skipping`)
+        // console.log(`\t\tFill is a gradient, skipping`)
+        // TODO: implement gradient fill cleanup
         break
       case 4:
         // Pattern
-        console.log(`\t\tFill is a pattern, skipping`)
+        // console.log(`\t\tFill is a pattern, skipping`)
         break
       default:
-        console.log(`\t\tUnknown fill type: ${fill.fillType}`)
+        // console.log(`\t\tUnknown fill type: ${fill.fillType}`)
+        break
     }
   })
 
   // 2. Update borders
-  console.log(`\tChecking borders`)
+  // console.log(`\t2. Borders`)
   layer.style?.borders?.forEach((border: FileFormat.Border) => {
     if (border.color.swatchID !== undefined) {
       const matchingSwatch = matchingSwatchForColorInSwatches(
@@ -78,7 +78,7 @@ export function cleanupColorsInLayer(
   })
 
   // 3. Update shadows
-  console.log(`\tChecking shadows`)
+  // console.log(`\t3. Shadows`)
   layer.style?.shadows?.forEach((shadow: FileFormat.Shadow) => {
     if (shadow.color.swatchID !== undefined) {
       const matchingSwatch = matchingSwatchForColorInSwatches(
@@ -98,7 +98,7 @@ export function cleanupColorsInLayer(
   })
 
   // 4. Update innerShadows
-  console.log(`\tChecking innerShadows`)
+  // console.log(`\t4. Inner Shadows`)
   layer.style?.innerShadows?.forEach((shadow: FileFormat.InnerShadow) => {
     if (shadow.color.swatchID !== undefined) {
       const matchingSwatch = matchingSwatchForColorInSwatches(
@@ -118,7 +118,7 @@ export function cleanupColorsInLayer(
   })
 
   // 5. Update text colors
-  console.log(`\tChecking text colors`)
+  // console.log(`\t5. Text Colors`)
   layer.attributedString?.attributes?.forEach((attribute) => {
     const color = attribute.attributes.MSAttributedStringColorAttribute
     if (color && color.swatchID !== undefined) {
@@ -133,7 +133,7 @@ export function cleanupColorsInLayer(
   })
 
   // 6. Update Artboard and Slice backgrounds
-  console.log(`Checking colors in Artboard and Slice backgrounds`)
+  // console.log(`\t6. Artboard & Slice Background`)
   if (
     (layer._class === 'slice' || layer._class === 'artboard') &&
     layer.hasBackgroundColor
@@ -150,7 +150,7 @@ export function cleanupColorsInLayer(
       }
     }
   } else {
-    console.log(`\t\tNo background color found`)
+    // console.log(`\t\tNo background color found`)
   }
 
   return layer

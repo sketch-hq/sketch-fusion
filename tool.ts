@@ -9,5 +9,5 @@ const outputFile =
     : path.resolve(__dirname, `output-${Date.now()}.sketch`)
 
 mergeFiles([sourceFile, themeFile, outputFile]).then((result) => {
-  console.log(result)
+  console.log(`\n\n💎 File saved at: ${result}`)
 })

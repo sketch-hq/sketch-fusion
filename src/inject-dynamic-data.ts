@@ -15,7 +15,7 @@ export function injectDynamicData(layer: any, data: object) {
       const replacement = text.replace(match, data[key])
       if (text.includes(match)) {
         layer.attributedString.string = replacement
-        // TODO: This only works for text layers with a single style
+        // TODO: ↓↓ This only works for text layers with a single style
         layer.attributedString.attributes[0].length =
           layer.attributedString.string.length
         text = replacement
@@ -27,7 +27,7 @@ export function injectDynamicData(layer: any, data: object) {
         '{{date}}',
         new Date().toDateString()
       )
-      // TODO: this looks like it could be extracted into a function
+      // TODO: ↓↓ this looks like it could be extracted into a function
       layer.attributedString.attributes[0].length =
         layer.attributedString.string.length
       // console.log(JSON.stringify(layer)) // let's see what's here...
@@ -37,6 +37,6 @@ export function injectDynamicData(layer: any, data: object) {
        */
     }
   }
-  // TODO: adjust layer size based on text size. Not sure how we can do this from the file format... Maybe mark the layer as needing a resize somehow?
+  // TODO: ↓↓ adjust layer size based on text size. Not sure how we can do this from the file format... Maybe mark the layer as needing a resize somehow?
   return layer
 }

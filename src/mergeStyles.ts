@@ -1,7 +1,7 @@
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
 import { options } from './mergeDocuments'
 
-// TODO: this really needs to be a three way merge if we want to properly
+// TODO: ↓↓ this really needs to be a three way merge if we want to properly
 // reuse styles from the output document. We'll make it a preference, for people
 // who want to publish both the source, output and theme documents.
 export function mergeStyles(
