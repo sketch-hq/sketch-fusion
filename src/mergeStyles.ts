@@ -1,5 +1,5 @@
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
-import { options } from './index'
+import { options } from './mergeDocuments'
 
 // TODO: this really needs to be a three way merge if we want to properly
 // reuse styles from the output document. We'll make it a preference, for people

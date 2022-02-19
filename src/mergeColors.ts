@@ -1,5 +1,5 @@
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
-import { options } from './index'
+import { options } from './mergeDocuments'
 
 export function mergeColors(
   sourceColors: FileFormat.SwatchContainer,
