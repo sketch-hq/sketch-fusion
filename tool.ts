@@ -1,5 +1,5 @@
-import { mergeFiles } from './src/index.js'
 import path from 'path'
+import { mergeFiles } from './src/mergeFiles'
 
 const sourceFile = path.resolve(__dirname, process.argv.slice(2)[0])
 const themeFile = path.resolve(__dirname, process.argv.slice(2)[1])

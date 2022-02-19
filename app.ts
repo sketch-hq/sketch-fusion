@@ -1,7 +1,7 @@
 import path from 'path'
 import express from 'express'
 import fileUpload from 'express-fileupload'
-import { mergeFiles } from './src/index.js'
+import { mergeFiles } from './src/mergeFiles'
 import { v4 as uuidv4 } from 'uuid'
 import * as fs from 'fs'
 
