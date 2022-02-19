@@ -2,10 +2,9 @@
   "name": "sketch-fusion",
   "version": "1.0.0",
   "description": "Sketch Fusion applies themes to Design System documents.",
-  "main": "src/index.ts",
+  "main": "app.ts",
   "scripts": {
-    "start": "tsc && node src/index.js",
-    "web": "tsc && node app.js",
+    "start": "tsc && node app.js",
     "tool": "tsc && node tool.js",
     "basic": "tsc && node tool.js 0_source.sketch 1_theme.sketch 2_output.sketch",
     "two": "tsc && rm -f 2_output.sketch && node tool.js 0_source.sketch 1_theme.sketch",
