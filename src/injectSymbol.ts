@@ -1,53 +1,55 @@
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
 import { SketchFile } from '@sketch-hq/sketch-file'
 import { v4 as uuidv4 } from 'uuid'
-import newOverrideName from './new-override-name'
+import newOverrideName from './newOverrideName'
 import { allLayers } from './allLayers'
+import { allSymbolMasters } from './allSymbolMasters'
+import { allSymbolInstances } from './allSymbolInstances'
 
 export function injectSymbol(
   newSymbol: FileFormat.SymbolMaster,
   document: SketchFile
 ): SketchFile {
   const symbolPageName = 'Symbols'
+
+  // Replace the existing symbol with the new one
   let foundSymbol = false
-  allLayers(document).forEach((existingSymbol) => {
-    // We only want to replace Symbol Masters with the same name
-    if (
-      existingSymbol.name === newSymbol.name &&
-      existingSymbol._class === 'symbolMaster'
-    ) {
-      const originalSymbolID = existingSymbol.symbolID
-      // const originalObjectID = existingSymbol.do_objectID
-      allLayers(document).forEach((layer) => {
-        if (
-          layer._class === 'symbolInstance' &&
-          layer.symbolID === originalSymbolID
-        ) {
-          layer.symbolID = newSymbol.symbolID
+  allSymbolMasters(document).forEach((symbolMaster) => {
+    if (symbolMaster.name === newSymbol.name) {
+      // We will replace the existing symbol with the new one,
+      // so we need to use the new symbol in all of the symbol instances
+      // TODO: but do we need to do this *here*?
+      allSymbolInstances(document).forEach((symbolInstance) => {
+        if (symbolInstance.symbolID === symbolMaster.symbolID) {
+          symbolInstance.symbolID = newSymbol.symbolID
         }
+        //   // for all the instances of the symbol we're updating,
+        //   // make sure their overrides now point to the layer IDs
+        //   // of the new symbol
+        //   // TODO: ↑↑ fix nested overrides
+        //   if (symbolInstance.overrideValues.length > 0) {
+        //     symbolInstance.overrideValues?.forEach((overrideValue) => {
+        //       console.log(overrideValue)
 
-        // for all the instances of the symbol we're updating,
-        // make sure their overrides now point to the layer IDs
-        // of the new symbol
-        // TODO: ↑↑ fix nested overrides
-        layer.overrideValues?.forEach((overrideValue) => {
-          overrideValue.overrideName = newOverrideName(
-            overrideValue.overrideName,
-            newSymbol,
-            existingSymbol
-          )
-        })
+        //       overrideValue.overrideName = newOverrideName(
+        //         overrideValue.overrideName,
+        //         newSymbol,
+        //         symbolMaster
+        //       )
+        //     })
+        //   }
       })
-
-      for (const property in existingSymbol) {
-        if (existingSymbol.hasOwnProperty(property)) {
-          existingSymbol[property] = newSymbol[property]
+      // Finally, update all prperties of the symbol master
+      for (const property in symbolMaster) {
+        if (symbolMaster.hasOwnProperty(property)) {
+          symbolMaster[property] = newSymbol[property]
         }
       }
       foundSymbol = true
     }
   })
 
+  // If we didn't find the symbol, add it to the document
   if (!foundSymbol) {
     console.log(`\tSymbol "${newSymbol.name}" is not in doc, adding`)
     let symbolPage: FileFormat.Page = document.contents.document.pages.find(

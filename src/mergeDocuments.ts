@@ -14,7 +14,12 @@ import { cleanupColorsInLayer } from './cleanupColorsInLayer'
 import { colorsAreEqual } from './colorsAreEqual'
 import { matchingSwatchForColorInSwatches } from './matchingSwatchForColorInSwatches'
 import { resetStyle } from './resetStyle'
-import { allLayers } from './allLayers'
+import { allLayers, sublayers } from './allLayers'
+import { allSymbolMasters } from './allSymbolMasters'
+import { allSymbolInstances } from './allSymbolInstances'
+import newOverrideName from './newOverrideName'
+import { getSymbolMaster } from './getSymbolMaster'
+import getElementByID from './getElementByID'
 
 export const options = require(path.resolve(__dirname, '../config.json'))
 const data = require(path.resolve(__dirname, '../data.json'))
@@ -53,17 +58,75 @@ export async function mergeDocuments(
   console.log(`Step 4: 💠 Merging Symbols`)
   // First, inject the symbols from the source document, as they may have changed:
   // TODO: ↓↓ we can skip this step if we're not using the output document
-  allLayers(sourceDocument).forEach((symbol: FileFormat.SymbolMaster) => {
-    if (symbol._class === 'symbolMaster') {
-      console.log(`  Injecting ${symbol.name} from source document`)
-      outputDocument = injectSymbol(symbol, outputDocument)
-    }
+  allSymbolMasters(sourceDocument).forEach((symbol) => {
+    console.log(
+      `  Injecting ${symbol.name} (${symbol.symbolID}) from source document`
+    )
+    outputDocument = injectSymbol(symbol, outputDocument)
   })
   // Then, inject the symbols from the theme document:o
-  allLayers(themeDocument).forEach((symbol: FileFormat.SymbolMaster) => {
-    if (symbol._class === 'symbolMaster') {
-      console.log(`  Injecting ${symbol.name} from theme document`)
-      outputDocument = injectSymbol(symbol, outputDocument)
+  allSymbolMasters(themeDocument).forEach((symbol) => {
+    console.log(
+      `  Injecting ${symbol.name} (${symbol.symbolID}) from theme document`
+    )
+    outputDocument = injectSymbol(symbol, outputDocument)
+  })
+
+  // Update overrides
+  allSymbolInstances(outputDocument).forEach((symbolInstance) => {
+    // for all the instances on the output document
+    // make sure their overrides now point to the layer IDs
+    // of the new symbol
+    // TODO: ↑↑ fix nested overrides
+    if (symbolInstance.overrideValues.length > 0) {
+      const master = getSymbolMaster(symbolInstance, outputDocument)
+      symbolInstance.overrideValues?.forEach((overrideValue) => {
+        console.log(overrideValue.overrideName)
+        const layerIDs = sublayers(master).map((layer) => layer.do_objectID)
+        // TODO: we will have to fix overrides for all items in the path, not just the first one
+        const overrideID = overrideValue.overrideName
+          .split('/')[0]
+          .split('_')[0]
+        console.log(layerIDs)
+        const overridePathComponents = overrideValue.overrideName
+          .split('_')[0]
+          .split('/')
+        overridePathComponents.forEach((component, index) => {
+          console.log(getElementByID(component, sourceDocument)?.name)
+        })
+
+        // const originalOverrideLayer = getElementByID(overrideID, sourceDocument)
+        // console.log(originalOverrideLayer?.overrideValues)
+
+        if (!layerIDs.includes(overrideID)) {
+          console.log(
+            `  Override ${overrideValue.overrideName} is invalid, fixing`
+          )
+          // console.log(overrideValue)
+          // Looks like we're going to need the original symbol master
+          // to extract the name for the overriden layer
+          const originalOverrideLayer = getElementByID(
+            overrideID,
+            sourceDocument
+          )
+          // console.log(originalOverrideLayer.name)
+          const newOverrideLayer = sublayers(master).filter(
+            (layer) => layer.name === originalOverrideLayer.name
+          )[0]
+          // console.log(newOverrideLayer.do_objectID)
+          overrideValue.overrideName = overrideValue.overrideName.replace(
+            overrideID,
+            newOverrideLayer.do_objectID
+          )
+          // console.log(overrideValue)
+        }
+
+        // overrideValue.overrideName = newOverrideName(
+        //   overrideValue.overrideName,
+        //   symbolInstance.symbolMaster
+        //   //   symbolMaster
+        // )
+      })
     }
   })
 
