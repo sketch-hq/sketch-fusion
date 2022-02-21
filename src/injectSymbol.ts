@@ -1,8 +1,6 @@
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
 import { SketchFile } from '@sketch-hq/sketch-file'
 import { v4 as uuidv4 } from 'uuid'
-import newOverrideName from './newOverrideName'
-import { allLayers } from './allLayers'
 import { allSymbolMasters } from './allSymbolMasters'
 import { allSymbolInstances } from './allSymbolInstances'
 

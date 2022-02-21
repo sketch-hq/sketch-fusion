@@ -20,7 +20,6 @@ import { mergeLayerStyles } from './mergeLayerStyles'
 import { mergeTextStyles } from './mergeTextStyles'
 import { resetStyle } from './resetStyle'
 import getElementByID from './getElementByID'
-import newOverrideName from './newOverrideName'
 import { matchingLayerStyle } from './matchingLayerStyle'
 
 export const options = require(path.resolve(__dirname, '../config.json'))
