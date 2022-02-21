@@ -61,18 +61,11 @@ export async function mergeDocuments(
   // 4. Merge Symbols
   console.log(`Step 4: 💠 Merging Symbols`)
   // First, inject the symbols from the source document, as they may have changed:
-  // TODO: ↓↓ we can skip this step if we're not using the output document
   allSymbolMasters(sourceDocument).forEach((symbol) => {
-    // console.log(
-    //   `  Injecting ${symbol.name} (${symbol.symbolID}) from source document`
-    // )
     outputDocument = injectSymbol(symbol, outputDocument)
   })
   // Then, inject the symbols from the theme document:o
   allSymbolMasters(themeDocument).forEach((symbol) => {
-    // console.log(
-    //   `  Injecting ${symbol.name} (${symbol.symbolID}) from theme document`
-    // )
     outputDocument = injectSymbol(symbol, outputDocument)
   })
 
@@ -261,10 +254,6 @@ export async function mergeDocuments(
     return text.sharedStyleID !== undefined
   })
   styledTextLayers.forEach((text: FileFormat.Text) => {
-    // console.log(`    ⮑  📝 Text Layer: ${text.name}`)
-    // console.log(`        ${text.sharedStyleID}`)
-    // console.log(`        ${text.userInfo}`)
-
     const matchingStyle: FileFormat.SharedStyle = matchingLayerStyle(
       text.sharedStyleID,
       textStyles
@@ -362,7 +351,6 @@ export async function mergeDocuments(
       // we'll fix soon.
 
       // Make a temp folder inside our uploads folder
-      // TODO: ↓↓ use the outputDocument.filepath to make this less brittle
       const tempFolder = path.resolve(__dirname, '../tmp/', uuidv4())
       fs.mkdirSync(tempFolder, { recursive: true })
       const sourceFolder = path.resolve(tempFolder, 'source')

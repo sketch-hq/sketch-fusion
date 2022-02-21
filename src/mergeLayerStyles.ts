@@ -21,7 +21,7 @@ export function mergeLayerStyles(
     )
     // If the style is already in the source document, we'll replace it...
     if (matchingStyle) {
-      // TODO: This option makes me nervous, remove it
+      // TODO: use the implementation from mergeTextStyles
       if (options.reuseStyleID) {
         const originalStyle =
           combinedStyles.objects[combinedStyles.objects.indexOf(matchingStyle)]

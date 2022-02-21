@@ -22,8 +22,6 @@ app.listen(port, () => {
 
 app.post('/upload', (req, res) => {
   if (!req.files || Object.keys(req.files).length < 2) {
-    // TODO: ↓↓ Proper error checking. We need to make sure we have all the files we need,
-    // not just the first two.
     res.status(400).send('You need to upload at least 2 files.')
     return
   } else {

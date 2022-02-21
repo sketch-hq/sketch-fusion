@@ -18,26 +18,10 @@ export function injectSymbol(
     if (symbolMaster.name === newSymbol.name) {
       // We will replace the existing symbol with the new one,
       // so we need to use the new symbol in all of the symbol instances
-      // TODO: but do we need to do this *here*?
       allSymbolInstances(document).forEach((symbolInstance) => {
         if (symbolInstance.symbolID === symbolMaster.symbolID) {
           symbolInstance.symbolID = newSymbol.symbolID
         }
-        //   // for all the instances of the symbol we're updating,
-        //   // make sure their overrides now point to the layer IDs
-        //   // of the new symbol
-        //   // TODO: ↑↑ fix nested overrides
-        //   if (symbolInstance.overrideValues.length > 0) {
-        //     symbolInstance.overrideValues?.forEach((overrideValue) => {
-        //       console.log(overrideValue)
-
-        //       overrideValue.overrideName = newOverrideName(
-        //         overrideValue.overrideName,
-        //         newSymbol,
-        //         symbolMaster
-        //       )
-        //     })
-        //   }
       })
       // Finally, update all prperties of the symbol master
       for (const property in symbolMaster) {

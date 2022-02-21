@@ -49,6 +49,7 @@ export function cleanupColorsInLayer(
       case 4:
         // Pattern
         // console.log(`\t\tFill is a pattern, skipping`)
+        // TODO: implement pattern fill cleanup
         break
       default:
         // console.log(`\t\tUnknown fill type: ${fill.fillType}`)
