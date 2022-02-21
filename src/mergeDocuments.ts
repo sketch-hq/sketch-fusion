@@ -6,20 +6,22 @@ import archiver from 'archiver'
 import AdmZip from 'adm-zip'
 import { v4 as uuidv4 } from 'uuid'
 
-import { mergeStyles } from './mergeStyles'
-import { mergeColors } from './mergeColors'
-import { injectSymbol } from './injectSymbol'
-import { injectDynamicData } from './inject-dynamic-data'
+import { allLayers, allTextLayers, sublayers } from './allLayers'
+import { allSymbolInstances } from './allSymbolInstances'
+import { allSymbolMasters } from './allSymbolMasters'
 import { cleanupColorsInLayer } from './cleanupColorsInLayer'
 import { colorsAreEqual } from './colorsAreEqual'
-import { matchingSwatchForColorInSwatches } from './matchingSwatchForColorInSwatches'
-import { resetStyle } from './resetStyle'
-import { allLayers, sublayers } from './allLayers'
-import { allSymbolMasters } from './allSymbolMasters'
-import { allSymbolInstances } from './allSymbolInstances'
-import newOverrideName from './newOverrideName'
 import { getSymbolMaster } from './getSymbolMaster'
+import { injectDynamicData } from './injectDynamicData'
+import { injectSymbol } from './injectSymbol'
+import { matchingSwatchForColorInSwatches } from './matchingSwatchForColorInSwatches'
+import { mergeColors } from './mergeColors'
+import { mergeLayerStyles } from './mergeLayerStyles'
+import { mergeTextStyles } from './mergeTextStyles'
+import { resetStyle } from './resetStyle'
 import getElementByID from './getElementByID'
+import newOverrideName from './newOverrideName'
+import { matchingLayerStyle } from './matchingLayerStyle'
 
 export const options = require(path.resolve(__dirname, '../config.json'))
 const data = require(path.resolve(__dirname, '../data.json'))
@@ -29,7 +31,11 @@ export async function mergeDocuments(
   themeDocument: SketchFile,
   outputDocument: SketchFile
 ): Promise<string> {
-  console.log('\n\nMerging documents...')
+  const sourceFileName = path.basename(sourceDocument.filepath, '.sketch')
+  const themeFileName = path.basename(themeDocument.filepath, '.sketch')
+  console.log(
+    `\n\nMerging documents "${sourceFileName}" and "${themeFileName}"\n`
+  )
 
   // 1. Merge Colors
   console.log(`Step 1: 🎨 Merging Colors`)
@@ -40,18 +46,16 @@ export async function mergeDocuments(
 
   // 2. Merge Layer Styles
   console.log(`Step 2: 💅 Merging Layer Styles`)
-  outputDocument.contents.document.layerStyles = mergeStyles(
+  outputDocument.contents.document.layerStyles = mergeLayerStyles(
     sourceDocument.contents.document.layerStyles,
-    themeDocument.contents.document.layerStyles,
-    'sharedStyleContainer'
+    themeDocument.contents.document.layerStyles
   )
 
   // 3. Merge Text Styles
   console.log(`Step 3: 📚 Merging Text Styles`)
-  outputDocument.contents.document.layerTextStyles = mergeStyles(
-    sourceDocument.contents.document.layerTextStyles,
-    themeDocument.contents.document.layerTextStyles,
-    'sharedTextStyleContainer'
+  outputDocument.contents.document.layerTextStyles = mergeTextStyles(
+    sourceDocument,
+    themeDocument
   )
 
   // 4. Merge Symbols
@@ -59,75 +63,17 @@ export async function mergeDocuments(
   // First, inject the symbols from the source document, as they may have changed:
   // TODO: ↓↓ we can skip this step if we're not using the output document
   allSymbolMasters(sourceDocument).forEach((symbol) => {
-    console.log(
-      `  Injecting ${symbol.name} (${symbol.symbolID}) from source document`
-    )
+    // console.log(
+    //   `  Injecting ${symbol.name} (${symbol.symbolID}) from source document`
+    // )
     outputDocument = injectSymbol(symbol, outputDocument)
   })
   // Then, inject the symbols from the theme document:o
   allSymbolMasters(themeDocument).forEach((symbol) => {
-    console.log(
-      `  Injecting ${symbol.name} (${symbol.symbolID}) from theme document`
-    )
+    // console.log(
+    //   `  Injecting ${symbol.name} (${symbol.symbolID}) from theme document`
+    // )
     outputDocument = injectSymbol(symbol, outputDocument)
-  })
-
-  // Update overrides
-  allSymbolInstances(outputDocument).forEach((symbolInstance) => {
-    // for all the instances on the output document
-    // make sure their overrides now point to the layer IDs
-    // of the new symbol
-    // TODO: ↑↑ fix nested overrides
-    if (symbolInstance.overrideValues.length > 0) {
-      const master = getSymbolMaster(symbolInstance, outputDocument)
-      symbolInstance.overrideValues?.forEach((overrideValue) => {
-        console.log(overrideValue.overrideName)
-        const layerIDs = sublayers(master).map((layer) => layer.do_objectID)
-        // TODO: we will have to fix overrides for all items in the path, not just the first one
-        const overrideID = overrideValue.overrideName
-          .split('/')[0]
-          .split('_')[0]
-        console.log(layerIDs)
-        const overridePathComponents = overrideValue.overrideName
-          .split('_')[0]
-          .split('/')
-        overridePathComponents.forEach((component, index) => {
-          console.log(getElementByID(component, sourceDocument)?.name)
-        })
-
-        // const originalOverrideLayer = getElementByID(overrideID, sourceDocument)
-        // console.log(originalOverrideLayer?.overrideValues)
-
-        if (!layerIDs.includes(overrideID)) {
-          console.log(
-            `  Override ${overrideValue.overrideName} is invalid, fixing`
-          )
-          // console.log(overrideValue)
-          // Looks like we're going to need the original symbol master
-          // to extract the name for the overriden layer
-          const originalOverrideLayer = getElementByID(
-            overrideID,
-            sourceDocument
-          )
-          // console.log(originalOverrideLayer.name)
-          const newOverrideLayer = sublayers(master).filter(
-            (layer) => layer.name === originalOverrideLayer.name
-          )[0]
-          // console.log(newOverrideLayer.do_objectID)
-          overrideValue.overrideName = overrideValue.overrideName.replace(
-            overrideID,
-            newOverrideLayer.do_objectID
-          )
-          // console.log(overrideValue)
-        }
-
-        // overrideValue.overrideName = newOverrideName(
-        //   overrideValue.overrideName,
-        //   symbolInstance.symbolMaster
-        //   //   symbolMaster
-        // )
-      })
-    }
   })
 
   // 5. Now we need to make sure that all the layers are using the new styles and colors
@@ -139,19 +85,12 @@ export async function mergeDocuments(
   const layerStyles = outputDocument.contents.document.layerStyles.objects
   const textStyles = outputDocument.contents.document.layerTextStyles.objects
   const allStyles: FileFormat.SharedStyle[] = [...layerStyles, ...textStyles]
-  const pages = outputDocument.contents.document.pages
 
   console.debug(`  ⮑  🎨 Colors`)
   allLayers(outputDocument).forEach((layer) => {
     layer = cleanupColorsInLayer(layer, swatches)
     layer = injectDynamicData(layer, data)
   })
-  // pages.forEach((page: FileFormat.Page) => {
-  //   page.layers.forEach((layer) => {
-  //     layer = cleanupColorsInLayer(layer, swatches)
-  //     layer = injectDynamicData(layer, data)
-  //   })
-  // })
 
   console.log(`  ⮑  💅 Layer Styles`)
   layerStyles.forEach((style) => {
@@ -223,6 +162,9 @@ export async function mergeDocuments(
         }
       }
     })
+  })
+  allLayers(outputDocument).forEach((layer) => {
+    layer = resetStyle(layer, allStyles)
   })
 
   console.log(`  ⮑  📚 Text Styles`)
@@ -314,18 +256,104 @@ export async function mergeDocuments(
       }
     }
   })
-
-  console.log(`  ⮑  💠 Symbols (PENDING)`)
-
-  console.log(`  ⮑  🟧 Layers (PENDING)`)
-  allLayers(outputDocument).forEach((layer) => {
-    layer = resetStyle(layer, allStyles)
+  // Update text layers that reference old style IDs that may have changed after merging
+  const styledTextLayers = allTextLayers(outputDocument).filter((text) => {
+    return text.sharedStyleID !== undefined
   })
-  // pages.forEach((page) => {
-  //   page.layers.forEach((layer) => {
-  //     layer = resetStyle(layer, allStyles)
-  //   })
-  // })
+  styledTextLayers.forEach((text: FileFormat.Text) => {
+    // console.log(`    ⮑  📝 Text Layer: ${text.name}`)
+    // console.log(`        ${text.sharedStyleID}`)
+    // console.log(`        ${text.userInfo}`)
+
+    const matchingStyle: FileFormat.SharedStyle = matchingLayerStyle(
+      text.sharedStyleID,
+      textStyles
+    )
+
+    if (!matchingStyle) {
+      // There's not an style matching this layer's style ID,
+      // so we'll find the closest match using the metadata we injected
+      // into the layer's userInfo back in `mergeTextStyles`
+      if (text.userInfo?.previousTextStyle) {
+        const closestStyle: FileFormat.SharedStyle = textStyles.filter(
+          (style) => {
+            return style.name == text.userInfo.previousTextStyle.name
+          }
+        )[0]
+        text.sharedStyleID = closestStyle.do_objectID
+        text.style = closestStyle.value
+        const stringAttributes = text.attributedString.attributes
+        stringAttributes.forEach((attribute) => {
+          attribute.attributes.MSAttributedStringFontAttribute =
+            closestStyle.value.textStyle.encodedAttributes.MSAttributedStringFontAttribute
+          attribute.attributes.MSAttributedStringColorAttribute =
+            closestStyle.value.textStyle.encodedAttributes.MSAttributedStringColorAttribute
+          attribute.attributes.paragraphStyle =
+            closestStyle.value.textStyle.encodedAttributes.paragraphStyle
+        })
+      }
+    }
+  })
+
+  console.log(`  ⮑  💠 Symbol Overrides`)
+  allSymbolInstances(outputDocument).forEach((symbolInstance) => {
+    // for all the instances on the output document
+    // make sure their overrides now point to the layer IDs
+    // of the new symbol masters
+    if (symbolInstance.overrideValues.length > 0) {
+      const master: FileFormat.SymbolMaster = getSymbolMaster(
+        symbolInstance,
+        outputDocument
+      )
+      if (master === undefined) {
+        // This means it comes from a shared Library
+        console.log(`\t⮑  No local Symbol Master for "${symbolInstance.name}"`)
+      } else {
+        symbolInstance.overrideValues?.forEach((overrideValue) => {
+          /**
+           * I'm going to asume that if all IDs on an override path
+           * exist in the document, then it's a valid override path. Otherwise,
+           * this will never be done.
+           */
+          const overridePathComponents = overrideValue.overrideName
+            .split('_')[0]
+            .split('/')
+
+          const layerIDs = sublayers(master).map((layer) => layer.do_objectID)
+          const overrideType = overrideValue.overrideName.split('_')[1]
+          let updateOverride = false
+          overridePathComponents.forEach((component, index) => {
+            if (!layerIDs.includes(component)) {
+              const originalOverrideLayer = getElementByID(
+                component,
+                sourceDocument
+              )
+              if (originalOverrideLayer) {
+                const originalOverrideLayerName = originalOverrideLayer.name
+                // Get the first layer that has the same name as the original override
+                // This is not bulletproof, but it's good enough for now
+                // const newOverrideLayer = sublayers(master).filter((layer) => {
+                const newOverrideLayer = allLayers(outputDocument).filter(
+                  (layer) => {
+                    return layer.name == originalOverrideLayerName
+                  }
+                )[0]
+
+                if (newOverrideLayer !== undefined) {
+                  overridePathComponents[index] = newOverrideLayer.do_objectID
+                  updateOverride = true
+                }
+              }
+            }
+          })
+          if (updateOverride) {
+            overrideValue.overrideName =
+              overridePathComponents.join('/') + '_' + overrideType
+          }
+        })
+      }
+    }
+  })
 
   return new Promise((resolve, reject) => {
     toFile(outputDocument).then(() => {

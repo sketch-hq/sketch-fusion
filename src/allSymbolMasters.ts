@@ -5,8 +5,8 @@ import FileFormat from '@sketch-hq/sketch-file-format-ts'
 export function allSymbolMasters(
   document: SketchFile
 ): FileFormat.SymbolMaster[] {
-  const symbolMasters = []
-  allLayers(document).forEach((layer) => {
+  const symbolMasters: FileFormat.SymbolMaster[] = []
+  allLayers(document).forEach((layer: FileFormat.SymbolMaster) => {
     if (layer._class === 'symbolMaster') {
       symbolMasters.push(layer)
     }

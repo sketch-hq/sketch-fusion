@@ -11,17 +11,47 @@ export function allLayers(document: SketchFile) {
   return [].concat(...layers)
 }
 
-export function sublayers(layer): FileFormat.AnyLayer[] {
-  const layers = []
-  layers.push(layer)
-  if (
-    layer._class === 'group' ||
-    layer._class === 'symbolMaster' ||
-    layer._class === 'artboard'
-  ) {
-    layer.layers.forEach((sublayer) => {
-      layers.push(sublayers(sublayer))
-    })
+export function sublayers(
+  layer:
+    | FileFormat.Artboard
+    | FileFormat.Group
+    | FileFormat.Oval
+    | FileFormat.Polygon
+    | FileFormat.Rectangle
+    | FileFormat.ShapePath
+    | FileFormat.Star
+    | FileFormat.Triangle
+    | FileFormat.ShapeGroup
+    | FileFormat.Text
+    | FileFormat.SymbolMaster
+    | FileFormat.SymbolInstance
+    | FileFormat.Slice
+    | FileFormat.Hotspot
+    | FileFormat.Bitmap
+): FileFormat.AnyLayer[] {
+  // console.log(`sublayers(${layer.name})`)
+  if (layer === undefined) {
+    console.log('layer is undefined, wtf man')
+    console.log(layer)
   }
-  return [].concat(...layers)
+  try {
+    const layers = []
+    if (
+      layer._class === 'group' ||
+      layer._class === 'symbolMaster' ||
+      layer._class === 'artboard'
+    ) {
+      layer.layers.forEach((sublayer) => {
+        layers.push(sublayers(sublayer))
+      })
+    }
+    layers.push(layer)
+    return [].concat(...layers)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+export function allTextLayers(document: SketchFile) {
+  return allLayers(document).filter((layer) => layer._class === 'text')
 }

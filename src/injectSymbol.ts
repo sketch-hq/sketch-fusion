@@ -51,14 +51,14 @@ export function injectSymbol(
 
   // If we didn't find the symbol, add it to the document
   if (!foundSymbol) {
-    console.log(`\tSymbol "${newSymbol.name}" is not in doc, adding`)
+    // console.log(`\tSymbol "${newSymbol.name}" is not in doc, adding`)
     let symbolPage: FileFormat.Page = document.contents.document.pages.find(
       (page) => {
         return page.name === symbolPageName
       }
     )
     if (!symbolPage) {
-      console.log(`\t\tCreating symbol page "${symbolPageName}"`)
+      // console.log(`\t\tCreating symbol page "${symbolPageName}"`)
       const newPage: FileFormat.Page = {
         name: symbolPageName,
         layers: [],

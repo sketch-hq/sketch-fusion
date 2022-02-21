@@ -1,20 +1,12 @@
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
 import { options } from './mergeDocuments'
 
-// TODO: ↓↓ this really needs to be a three way merge if we want to properly
-// reuse styles from the output document. We'll make it a preference, for people
-// who want to publish both the source, output and theme documents.
-export function mergeStyles(
-  sourceStyles:
-    | FileFormat.SharedStyleContainer
-    | FileFormat.SharedTextStyleContainer,
-  themeStyles:
-    | FileFormat.SharedStyleContainer
-    | FileFormat.SharedTextStyleContainer,
-  type
-) {
-  let combinedStyles = {
-    _class: type,
+export function mergeLayerStyles(
+  sourceStyles: FileFormat.SharedStyleContainer,
+  themeStyles: FileFormat.SharedStyleContainer
+): FileFormat.SharedStyleContainer {
+  let combinedStyles: FileFormat.SharedStyleContainer = {
+    _class: 'sharedStyleContainer',
     objects: [],
   }
   // First, we'll start with the styles from the source document
@@ -29,6 +21,7 @@ export function mergeStyles(
     )
     // If the style is already in the source document, we'll replace it...
     if (matchingStyle) {
+      // TODO: This option makes me nervous, remove it
       if (options.reuseStyleID) {
         const originalStyle =
           combinedStyles.objects[combinedStyles.objects.indexOf(matchingStyle)]
