@@ -29,10 +29,8 @@ export function sublayers(
     | FileFormat.Hotspot
     | FileFormat.Bitmap
 ): FileFormat.AnyLayer[] {
-  // console.log(`sublayers(${layer.name})`)
   if (layer === undefined) {
-    console.log('layer is undefined, wtf man')
-    console.log(layer)
+    console.log('layer is undefined')
   }
   try {
     const layers = []

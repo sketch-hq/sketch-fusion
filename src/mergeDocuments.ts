@@ -78,9 +78,10 @@ export async function mergeDocuments(
   const layerStyles = outputDocument.contents.document.layerStyles.objects
   const textStyles = outputDocument.contents.document.layerTextStyles.objects
   const allStyles: FileFormat.SharedStyle[] = [...layerStyles, ...textStyles]
+  const allOutputLayers = allLayers(outputDocument)
 
   console.debug(`  ⮑  🎨 Colors`)
-  allLayers(outputDocument).forEach((layer) => {
+  allOutputLayers.forEach((layer) => {
     layer = cleanupColorsInLayer(layer, swatches)
     layer = injectDynamicData(layer, data)
   })
@@ -156,7 +157,7 @@ export async function mergeDocuments(
       }
     })
   })
-  allLayers(outputDocument).forEach((layer) => {
+  allOutputLayers.forEach((layer) => {
     layer = resetStyle(layer, allStyles)
   })
 
@@ -322,11 +323,9 @@ export async function mergeDocuments(
                 // Get the first layer that has the same name as the original override
                 // This is not bulletproof, but it's good enough for now
                 // const newOverrideLayer = sublayers(master).filter((layer) => {
-                const newOverrideLayer = allLayers(outputDocument).filter(
-                  (layer) => {
-                    return layer.name == originalOverrideLayerName
-                  }
-                )[0]
+                const newOverrideLayer = allOutputLayers.filter((layer) => {
+                  return layer.name == originalOverrideLayerName
+                })[0]
 
                 if (newOverrideLayer !== undefined) {
                   overridePathComponents[index] = newOverrideLayer.do_objectID
