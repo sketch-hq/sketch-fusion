@@ -14,13 +14,14 @@ import { colorsAreEqual } from './colorsAreEqual'
 import { getSymbolMaster } from './getSymbolMaster'
 import { injectDynamicData } from './injectDynamicData'
 import { injectSymbol } from './injectSymbol'
+import { matchingLayerStyle } from './matchingLayerStyle'
 import { matchingSwatchForColorInSwatches } from './matchingSwatchForColorInSwatches'
 import { mergeColors } from './mergeColors'
 import { mergeLayerStyles } from './mergeLayerStyles'
 import { mergeTextStyles } from './mergeTextStyles'
 import { resetStyle } from './resetStyle'
 import getElementByID from './getElementByID'
-import { matchingLayerStyle } from './matchingLayerStyle'
+import getElementByName from './getElementByName'
 
 export const options = require(path.resolve(__dirname, '../config.json'))
 const data = require(path.resolve(__dirname, '../data.json'))
@@ -63,16 +64,39 @@ export async function mergeDocuments(
   allSymbolMasters(sourceDocument).forEach((symbol) => {
     outputDocument = injectSymbol(symbol, outputDocument)
   })
-  // Then, inject the symbols from the theme document:o
+  // Then, inject the symbols from the theme document:
   allSymbolMasters(themeDocument).forEach((symbol) => {
     outputDocument = injectSymbol(symbol, outputDocument)
+  })
+
+  // TODO: Merge the layers from the theme document into the source document. We'll start with Artboards.
+  console.log(`Step 5: 📦 Merging Layers (Artboards, by now)`)
+  // We'll start with Artboards
+  outputDocument.contents.document.pages.forEach((page) => {
+    page.layers.forEach((layer) => {
+      if (layer._class === 'artboard') {
+        const themeArtboard: FileFormat.Artboard = getElementByName(
+          layer.name,
+          themeDocument
+        )
+        if (
+          themeArtboard !== undefined &&
+          themeArtboard._class === 'artboard'
+        ) {
+          for (const property in layer) {
+            if (layer.hasOwnProperty(property)) {
+              layer[property] = themeArtboard[property]
+            }
+          }
+        }
+      }
+    })
   })
 
   // 5. Now we need to make sure that all the layers are using the new styles and colors
   // Although we could just do this when we inject the relevant items, we'll do it here
   // to make sure that all the pieces are now in place
-  console.log(`Step 5: 🆕 Update references:`)
-
+  console.log(`Step 6: 🆕 Update references:`)
   const swatches = outputDocument.contents.document.sharedSwatches
   const layerStyles = outputDocument.contents.document.layerStyles.objects
   const textStyles = outputDocument.contents.document.layerTextStyles.objects

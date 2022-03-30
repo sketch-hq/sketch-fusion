@@ -53,3 +53,22 @@ export function sublayers(
 export function allTextLayers(document: SketchFile) {
   return allLayers(document).filter((layer) => layer._class === 'text')
 }
+
+export function allPages(document: SketchFile) {
+  return document.contents.document.pages
+}
+
+export function allMergeableLayers(
+  document: SketchFile
+): FileFormat.AnyLayer[] {
+  const mergeableLayers: FileFormat.AnyLayer[] = []
+  allPages(document).forEach((page) => {
+    const layers = page.layers
+    layers.forEach((layer) => {
+      if (layer._class !== 'symbolMaster') {
+        mergeableLayers.push(layer)
+      }
+    })
+  })
+  return mergeableLayers
+}
