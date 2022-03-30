@@ -75,10 +75,7 @@ export async function mergeDocuments(
   outputDocument.contents.document.pages.forEach((page) => {
     page.layers.forEach((layer) => {
       if (layer._class === 'artboard') {
-        const themeArtboard: FileFormat.Artboard = getElementByName(
-          layer.name,
-          themeDocument
-        )
+        const themeArtboard = getElementByName(layer.name, themeDocument)
         if (
           themeArtboard !== undefined &&
           themeArtboard._class === 'artboard'
