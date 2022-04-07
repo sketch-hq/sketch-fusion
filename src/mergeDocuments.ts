@@ -8,19 +8,20 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { allLayers, allTextLayers, sublayers } from './allLayers'
 import { allSymbolInstances } from './allSymbolInstances'
-import { allSymbolMasters } from './allSymbolMasters'
+import { allSymbolMasters, allSymbolMastersWithPage } from './allSymbolMasters'
 import { cleanupColorsInLayer } from './cleanupColorsInLayer'
 import { colorsAreEqual } from './colorsAreEqual'
+import { getElementByID } from './getElementByID'
+import { getElementByName } from './getElementByName'
 import { getSymbolMaster } from './getSymbolMaster'
 import { injectDynamicData } from './injectDynamicData'
 import { injectSymbol } from './injectSymbol'
+import { matchingLayerStyle } from './matchingLayerStyle'
 import { matchingSwatchForColorInSwatches } from './matchingSwatchForColorInSwatches'
 import { mergeColors } from './mergeColors'
 import { mergeLayerStyles } from './mergeLayerStyles'
 import { mergeTextStyles } from './mergeTextStyles'
 import { resetStyle } from './resetStyle'
-import getElementByID from './getElementByID'
-import { matchingLayerStyle } from './matchingLayerStyle'
 
 export const options = require(path.resolve(__dirname, '../config.json'))
 const data = require(path.resolve(__dirname, '../data.json'))
@@ -60,19 +61,46 @@ export async function mergeDocuments(
   // 4. Merge Symbols
   console.log(`Step 4: 💠 Merging Symbols`)
   // First, inject the symbols from the source document, as they may have changed:
-  allSymbolMasters(sourceDocument).forEach((symbol) => {
-    outputDocument = injectSymbol(symbol, outputDocument)
+  allSymbolMastersWithPage(sourceDocument).forEach((symbolObject) => {
+    outputDocument = injectSymbol(
+      symbolObject.symbol,
+      outputDocument,
+      symbolObject.page.name
+    )
   })
-  // Then, inject the symbols from the theme document:o
-  allSymbolMasters(themeDocument).forEach((symbol) => {
-    outputDocument = injectSymbol(symbol, outputDocument)
+  // Then, inject the symbols from the theme document:
+  allSymbolMastersWithPage(themeDocument).forEach((symbolObject) => {
+    outputDocument = injectSymbol(
+      symbolObject.symbol,
+      outputDocument,
+      symbolObject.page.name
+    )
+  })
+
+  // TODO: Use the page name to determine which Artboards to inject. Otherwise, we'll inject the first Artboard matching the name, which is not what we want.
+  console.log(`Step 5: 📦 Merging Layers (Artboards, by now)`)
+  outputDocument.contents.document.pages.forEach((page) => {
+    page.layers.forEach((layer) => {
+      if (layer._class === 'artboard') {
+        const themeArtboard = getElementByName(layer.name, themeDocument)
+        if (
+          themeArtboard !== undefined &&
+          themeArtboard._class === 'artboard'
+        ) {
+          for (const property in layer) {
+            if (layer.hasOwnProperty(property)) {
+              layer[property] = themeArtboard[property]
+            }
+          }
+        }
+      }
+    })
   })
 
   // 5. Now we need to make sure that all the layers are using the new styles and colors
   // Although we could just do this when we inject the relevant items, we'll do it here
   // to make sure that all the pieces are now in place
-  console.log(`Step 5: 🆕 Update references:`)
-
+  console.log(`Step 6: 🆕 Update references:`)
   const swatches = outputDocument.contents.document.sharedSwatches
   const layerStyles = outputDocument.contents.document.layerStyles.objects
   const textStyles = outputDocument.contents.document.layerTextStyles.objects
@@ -162,6 +190,7 @@ export async function mergeDocuments(
 
   console.log(`  ⮑  📚 Text Styles`)
   textStyles.forEach((style) => {
+    // console.log(`    ⮑  Updating references to style: ${style.name}`)
     // console.log(`\tFills`)
     style.value.fills?.forEach((fill) => {
       if (fill.color && fill.color.swatchID !== undefined) {
@@ -248,39 +277,26 @@ export async function mergeDocuments(
           { ...matchingSwatch.value, swatchID: matchingSwatch.do_objectID }
       }
     }
-  })
-  // Update text layers that reference old style IDs that may have changed after merging
-  const styledTextLayers = allTextLayers(outputDocument).filter((text) => {
-    return text.sharedStyleID !== undefined
-  })
-  styledTextLayers.forEach((text: FileFormat.Text) => {
-    const matchingStyle: FileFormat.SharedStyle = matchingLayerStyle(
-      text.sharedStyleID,
-      textStyles
-    )
-
-    if (!matchingStyle) {
-      // There's not an style matching this layer's style ID,
-      // so we'll find the closest match using the metadata we injected
-      // into the layer's userInfo back in `mergeTextStyles`
-      if (text.userInfo?.previousTextStyle) {
-        const closestStyle: FileFormat.SharedStyle = textStyles.filter(
-          (style) => {
-            return style.name == text.userInfo.previousTextStyle.name
-          }
-        )[0]
-        text.sharedStyleID = closestStyle.do_objectID
-        text.style = closestStyle.value
-        const stringAttributes = text.attributedString.attributes
-        stringAttributes.forEach((attribute) => {
-          attribute.attributes.MSAttributedStringFontAttribute =
-            closestStyle.value.textStyle.encodedAttributes.MSAttributedStringFontAttribute
-          attribute.attributes.MSAttributedStringColorAttribute =
-            closestStyle.value.textStyle.encodedAttributes.MSAttributedStringColorAttribute
-          attribute.attributes.paragraphStyle =
-            closestStyle.value.textStyle.encodedAttributes.paragraphStyle
-        })
-      }
+    // Update text layers that reference old style IDs
+    if (style.name.includes('💠💠💠💠💠💠')) {
+      const [name, oldId] = style.name.split('💠💠💠💠💠💠')
+      style.name = name
+      const layersUsingOldId = allTextLayers(outputDocument).filter(
+        (text) => text.sharedStyleID === oldId
+      )
+      layersUsingOldId.forEach((layer) => {
+        // Reference the new style ID...
+        layer.sharedStyleID = style.do_objectID
+        // ...and update the attributes of the text to reflect the ones in the new style:
+        // First, update the style attributes...
+        layer.style = JSON.parse(JSON.stringify(style.value))
+        // ...and then update the text attributes. We will overwrite all the data in the attributedString,
+        // which may sometimes not be what we want. If the text has multiple attributes, they will be replaced
+        // by the ones in the new style. This is not ideal, but it's a reasonable compromise for Design Systems.
+        layer.attributedString.attributes[0].attributes = JSON.parse(
+          JSON.stringify(style.value.textStyle.encodedAttributes)
+        )
+      })
     }
   })
 
@@ -289,6 +305,7 @@ export async function mergeDocuments(
     // for all the instances on the output document
     // make sure their overrides now point to the layer IDs
     // of the new symbol masters
+
     if (symbolInstance.overrideValues.length > 0) {
       const master: FileFormat.SymbolMaster = getSymbolMaster(
         symbolInstance,
@@ -298,18 +315,18 @@ export async function mergeDocuments(
         // This means it comes from a shared Library
         console.log(`\t⮑  No local Symbol Master for "${symbolInstance.name}"`)
       } else {
-        symbolInstance.overrideValues?.forEach((overrideValue) => {
+        symbolInstance.overrideValues?.forEach((override) => {
           /**
            * I'm going to asume that if all IDs on an override path
-           * exist in the document, then it's a valid override path. Otherwise,
+           * exist in the master, then it's a valid override path. Otherwise,
            * this will never be done.
            */
-          const overridePathComponents = overrideValue.overrideName
-            .split('_')[0]
-            .split('/')
+          const [path, type] = override.overrideName.split('_')
+          const overridePathComponents = path.split('/')
 
-          const layerIDs = sublayers(master).map((layer) => layer.do_objectID)
-          const overrideType = overrideValue.overrideName.split('_')[1]
+          const masterLayers = sublayers(master)
+          const layerIDs = masterLayers.map((layer) => layer.do_objectID)
+
           let updateOverride = false
           overridePathComponents.forEach((component, index) => {
             if (!layerIDs.includes(component)) {
@@ -319,13 +336,11 @@ export async function mergeDocuments(
               )
               if (originalOverrideLayer) {
                 const originalOverrideLayerName = originalOverrideLayer.name
-                // Get the first layer that has the same name as the original override
+                // Get the first layer in the master that has the same name as the original override
                 // This is not bulletproof, but it's good enough for now
-                // const newOverrideLayer = sublayers(master).filter((layer) => {
-                const newOverrideLayer = allOutputLayers.filter((layer) => {
-                  return layer.name == originalOverrideLayerName
-                })[0]
-
+                const newOverrideLayer = masterLayers.find(
+                  (layer) => layer.name == originalOverrideLayerName
+                )
                 if (newOverrideLayer !== undefined) {
                   overridePathComponents[index] = newOverrideLayer.do_objectID
                   updateOverride = true
@@ -334,8 +349,9 @@ export async function mergeDocuments(
             }
           })
           if (updateOverride) {
-            overrideValue.overrideName =
-              overridePathComponents.join('/') + '_' + overrideType
+            console.log(`\t⮑  Updating override "${override.overrideName}"`)
+            override.overrideName =
+              overridePathComponents.join('/') + '_' + type
           }
         })
       }
