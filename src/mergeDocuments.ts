@@ -190,7 +190,7 @@ export async function mergeDocuments(
 
   console.log(`  ⮑  📚 Text Styles`)
   textStyles.forEach((style) => {
-    console.log(`    ⮑  Updating references to style: ${style.name}`)
+    // console.log(`    ⮑  Updating references to style: ${style.name}`)
     // console.log(`\tFills`)
     style.value.fills?.forEach((fill) => {
       if (fill.color && fill.color.swatchID !== undefined) {
@@ -279,8 +279,8 @@ export async function mergeDocuments(
     }
     // Update text layers that reference old style IDs
     if (style.name.includes('💠💠💠💠💠💠')) {
-      const oldId = style.name.split('💠💠💠💠💠💠')[1]
-      style.name = style.name.split('💠💠💠💠💠💠')[0]
+      const [name, oldId] = style.name.split('💠💠💠💠💠💠')
+      style.name = name
       const layersUsingOldId = allTextLayers(outputDocument).filter(
         (text) => text.sharedStyleID === oldId
       )
@@ -305,6 +305,7 @@ export async function mergeDocuments(
     // for all the instances on the output document
     // make sure their overrides now point to the layer IDs
     // of the new symbol masters
+
     if (symbolInstance.overrideValues.length > 0) {
       const master: FileFormat.SymbolMaster = getSymbolMaster(
         symbolInstance,
@@ -314,18 +315,18 @@ export async function mergeDocuments(
         // This means it comes from a shared Library
         console.log(`\t⮑  No local Symbol Master for "${symbolInstance.name}"`)
       } else {
-        symbolInstance.overrideValues?.forEach((overrideValue) => {
+        symbolInstance.overrideValues?.forEach((override) => {
           /**
            * I'm going to asume that if all IDs on an override path
-           * exist in the document, then it's a valid override path. Otherwise,
+           * exist in the master, then it's a valid override path. Otherwise,
            * this will never be done.
            */
-          const overridePathComponents = overrideValue.overrideName
-            .split('_')[0]
-            .split('/')
+          const [path, type] = override.overrideName.split('_')
+          const overridePathComponents = path.split('/')
 
-          const layerIDs = sublayers(master).map((layer) => layer.do_objectID)
-          const overrideType = overrideValue.overrideName.split('_')[1]
+          const masterLayers = sublayers(master)
+          const layerIDs = masterLayers.map((layer) => layer.do_objectID)
+
           let updateOverride = false
           overridePathComponents.forEach((component, index) => {
             if (!layerIDs.includes(component)) {
@@ -335,13 +336,11 @@ export async function mergeDocuments(
               )
               if (originalOverrideLayer) {
                 const originalOverrideLayerName = originalOverrideLayer.name
-                // Get the first layer that has the same name as the original override
+                // Get the first layer in the master that has the same name as the original override
                 // This is not bulletproof, but it's good enough for now
-                // const newOverrideLayer = sublayers(master).filter((layer) => {
-                const newOverrideLayer = allOutputLayers.filter((layer) => {
-                  return layer.name == originalOverrideLayerName
-                })[0]
-
+                const newOverrideLayer = masterLayers.find(
+                  (layer) => layer.name == originalOverrideLayerName
+                )
                 if (newOverrideLayer !== undefined) {
                   overridePathComponents[index] = newOverrideLayer.do_objectID
                   updateOverride = true
@@ -350,8 +349,9 @@ export async function mergeDocuments(
             }
           })
           if (updateOverride) {
-            overrideValue.overrideName =
-              overridePathComponents.join('/') + '_' + overrideType
+            console.log(`\t⮑  Updating override "${override.overrideName}"`)
+            override.overrideName =
+              overridePathComponents.join('/') + '_' + type
           }
         })
       }
