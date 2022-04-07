@@ -1,14 +1,17 @@
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
 import { SketchFile } from '@sketch-hq/sketch-file'
-import { v4 as uuidv4 } from 'uuid'
 import { allSymbolMasters } from './allSymbolMasters'
 import { allSymbolInstances } from './allSymbolInstances'
+import { v4 as uuidv4 } from 'uuid'
 
 export function injectSymbol(
   newSymbol: FileFormat.SymbolMaster,
-  document: SketchFile
+  document: SketchFile,
+  pageName: string = undefined
 ): SketchFile {
-  const symbolPageName = 'Symbols'
+  const symbolPageName = pageName || 'Symbols'
+
+  // console.log(`injectSymbol: ${newSymbol.name} on page ${symbolPageName}`)
 
   // Replace the existing symbol with the new one
   let foundSymbol = false
@@ -22,6 +25,8 @@ export function injectSymbol(
         }
       })
       // Finally, update all prperties of the symbol master
+      newSymbol.frame.x = symbolMaster.frame.x
+      newSymbol.frame.y = symbolMaster.frame.y
       for (const property in symbolMaster) {
         if (symbolMaster.hasOwnProperty(property)) {
           symbolMaster[property] = newSymbol[property]

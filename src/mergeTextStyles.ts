@@ -6,8 +6,13 @@ export function mergeTextStyles(
   sourceFile: SketchFile,
   themeFile: SketchFile
 ): FileFormat.SharedTextStyleContainer {
-  const sourceStyles = sourceFile.contents.document.layerTextStyles
-  const themeStyles = themeFile.contents.document.layerTextStyles
+  // The JSON transformation is a bit of a hack to copy the objects without reference
+  const sourceStyles = JSON.parse(
+    JSON.stringify(sourceFile.contents.document.layerTextStyles)
+  )
+  const themeStyles = JSON.parse(
+    JSON.stringify(themeFile.contents.document.layerTextStyles)
+  )
 
   let combinedStyles: FileFormat.SharedTextStyleContainer = {
     _class: 'sharedTextStyleContainer',
@@ -27,24 +32,11 @@ export function mergeTextStyles(
       // If the style doesn't exist in the source document, add it and call it a day
       combinedStyles.objects.push(themeStyle)
     } else {
-      // If the style does exist in the source document, we have a lot of work to do
+      // If the style does exist in the source document, replace it.
+      // We'll keep a reference to the original style id on the name, so we can use it later
+      themeStyle.name += '💠💠💠💠💠💠' + matchingStyle.do_objectID
       const index = combinedStyles.objects.indexOf(matchingStyle)
       combinedStyles.objects[index] = themeStyle
-      // We now need to update the text layers that use this style,
-      // but we'll do this in a second pass later on in the process.
-      const textUsingStyle = layersUsingStyle(
-        matchingStyle.do_objectID,
-        sourceFile
-      )
-      textUsingStyle.forEach((textLayer) => {
-        textLayer.userInfo = {
-          ...textLayer.userInfo,
-          previousTextStyle: {
-            id: matchingStyle.do_objectID,
-            name: matchingStyle.name,
-          },
-        }
-      })
     }
   })
   return combinedStyles

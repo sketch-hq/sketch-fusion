@@ -2,7 +2,7 @@ import { SketchFile } from '@sketch-hq/sketch-file'
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
 import { allLayers } from './allLayers'
 
-export default function getElementByName(
+export function getElementByName(
   name: string,
   document: SketchFile
 ): FileFormat.AnyLayer {

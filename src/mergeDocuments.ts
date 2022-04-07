@@ -8,9 +8,11 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { allLayers, allTextLayers, sublayers } from './allLayers'
 import { allSymbolInstances } from './allSymbolInstances'
-import { allSymbolMasters } from './allSymbolMasters'
+import { allSymbolMasters, allSymbolMastersWithPage } from './allSymbolMasters'
 import { cleanupColorsInLayer } from './cleanupColorsInLayer'
 import { colorsAreEqual } from './colorsAreEqual'
+import { getElementByID } from './getElementByID'
+import { getElementByName } from './getElementByName'
 import { getSymbolMaster } from './getSymbolMaster'
 import { injectDynamicData } from './injectDynamicData'
 import { injectSymbol } from './injectSymbol'
@@ -20,8 +22,6 @@ import { mergeColors } from './mergeColors'
 import { mergeLayerStyles } from './mergeLayerStyles'
 import { mergeTextStyles } from './mergeTextStyles'
 import { resetStyle } from './resetStyle'
-import getElementByID from './getElementByID'
-import getElementByName from './getElementByName'
 
 export const options = require(path.resolve(__dirname, '../config.json'))
 const data = require(path.resolve(__dirname, '../data.json'))
@@ -61,17 +61,24 @@ export async function mergeDocuments(
   // 4. Merge Symbols
   console.log(`Step 4: 💠 Merging Symbols`)
   // First, inject the symbols from the source document, as they may have changed:
-  allSymbolMasters(sourceDocument).forEach((symbol) => {
-    outputDocument = injectSymbol(symbol, outputDocument)
+  allSymbolMastersWithPage(sourceDocument).forEach((symbolObject) => {
+    outputDocument = injectSymbol(
+      symbolObject.symbol,
+      outputDocument,
+      symbolObject.page.name
+    )
   })
   // Then, inject the symbols from the theme document:
-  allSymbolMasters(themeDocument).forEach((symbol) => {
-    outputDocument = injectSymbol(symbol, outputDocument)
+  allSymbolMastersWithPage(themeDocument).forEach((symbolObject) => {
+    outputDocument = injectSymbol(
+      symbolObject.symbol,
+      outputDocument,
+      symbolObject.page.name
+    )
   })
 
-  // TODO: Merge the layers from the theme document into the source document. We'll start with Artboards.
+  // TODO: Use the page name to determine which Artboards to inject. Otherwise, we'll inject the first Artboard matching the name, which is not what we want.
   console.log(`Step 5: 📦 Merging Layers (Artboards, by now)`)
-  // We'll start with Artboards
   outputDocument.contents.document.pages.forEach((page) => {
     page.layers.forEach((layer) => {
       if (layer._class === 'artboard') {
@@ -183,6 +190,7 @@ export async function mergeDocuments(
 
   console.log(`  ⮑  📚 Text Styles`)
   textStyles.forEach((style) => {
+    console.log(`    ⮑  Updating references to style: ${style.name}`)
     // console.log(`\tFills`)
     style.value.fills?.forEach((fill) => {
       if (fill.color && fill.color.swatchID !== undefined) {
@@ -269,39 +277,26 @@ export async function mergeDocuments(
           { ...matchingSwatch.value, swatchID: matchingSwatch.do_objectID }
       }
     }
-  })
-  // Update text layers that reference old style IDs that may have changed after merging
-  const styledTextLayers = allTextLayers(outputDocument).filter((text) => {
-    return text.sharedStyleID !== undefined
-  })
-  styledTextLayers.forEach((text: FileFormat.Text) => {
-    const matchingStyle: FileFormat.SharedStyle = matchingLayerStyle(
-      text.sharedStyleID,
-      textStyles
-    )
-
-    if (!matchingStyle) {
-      // There's not an style matching this layer's style ID,
-      // so we'll find the closest match using the metadata we injected
-      // into the layer's userInfo back in `mergeTextStyles`
-      if (text.userInfo?.previousTextStyle) {
-        const closestStyle: FileFormat.SharedStyle = textStyles.filter(
-          (style) => {
-            return style.name == text.userInfo.previousTextStyle.name
-          }
-        )[0]
-        text.sharedStyleID = closestStyle.do_objectID
-        text.style = closestStyle.value
-        const stringAttributes = text.attributedString.attributes
-        stringAttributes.forEach((attribute) => {
-          attribute.attributes.MSAttributedStringFontAttribute =
-            closestStyle.value.textStyle.encodedAttributes.MSAttributedStringFontAttribute
-          attribute.attributes.MSAttributedStringColorAttribute =
-            closestStyle.value.textStyle.encodedAttributes.MSAttributedStringColorAttribute
-          attribute.attributes.paragraphStyle =
-            closestStyle.value.textStyle.encodedAttributes.paragraphStyle
-        })
-      }
+    // Update text layers that reference old style IDs
+    if (style.name.includes('💠💠💠💠💠💠')) {
+      const oldId = style.name.split('💠💠💠💠💠💠')[1]
+      style.name = style.name.split('💠💠💠💠💠💠')[0]
+      const layersUsingOldId = allTextLayers(outputDocument).filter(
+        (text) => text.sharedStyleID === oldId
+      )
+      layersUsingOldId.forEach((layer) => {
+        // Reference the new style ID...
+        layer.sharedStyleID = style.do_objectID
+        // ...and update the attributes of the text to reflect the ones in the new style:
+        // First, update the style attributes...
+        layer.style = JSON.parse(JSON.stringify(style.value))
+        // ...and then update the text attributes. We will overwrite all the data in the attributedString,
+        // which may sometimes not be what we want. If the text has multiple attributes, they will be replaced
+        // by the ones in the new style. This is not ideal, but it's a reasonable compromise for Design Systems.
+        layer.attributedString.attributes[0].attributes = JSON.parse(
+          JSON.stringify(style.value.textStyle.encodedAttributes)
+        )
+      })
     }
   })
 
