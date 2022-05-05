@@ -29,13 +29,27 @@ const data = require(path.resolve(__dirname, '../data.json'))
 export async function mergeDocuments(
   sourceDocument: SketchFile,
   themeDocument: SketchFile,
-  outputDocument: SketchFile
+  outputOptions: {
+    id: string
+    fileName: string
+    documentState?: {}
+    cloudShare?: {}
+  }
 ): Promise<string> {
   const sourceFileName = path.basename(sourceDocument.filepath, '.sketch')
   const themeFileName = path.basename(themeDocument.filepath, '.sketch')
+
   console.log(
     `\n\nMerging documents "${sourceFileName}" and "${themeFileName}"\n`
   )
+
+  // Create a new document that is a copy of the source document...
+  let outputDocument: SketchFile = JSON.parse(JSON.stringify(sourceDocument))
+  // ...and store the data we got in the function call:
+  outputDocument.contents.document.do_objectID = outputOptions.id
+  outputDocument.filepath = outputOptions.fileName
+  outputDocument.contents.user.document.cloudShare = outputOptions.cloudShare
+  outputDocument.contents.document.documentState = outputOptions.documentState
 
   // 1. Merge Colors
   console.log(`Step 1: 🎨 Merging Colors`)
