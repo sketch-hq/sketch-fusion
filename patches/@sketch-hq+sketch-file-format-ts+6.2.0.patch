@@ -1,0 +1,12 @@
+diff --git a/node_modules/@sketch-hq/sketch-file-format-ts/dist/cjs/types.d.ts b/node_modules/@sketch-hq/sketch-file-format-ts/dist/cjs/types.d.ts
+index e7a1726..2cb118b 100644
+--- a/node_modules/@sketch-hq/sketch-file-format-ts/dist/cjs/types.d.ts
++++ b/node_modules/@sketch-hq/sketch-file-format-ts/dist/cjs/types.d.ts
+@@ -1431,6 +1431,7 @@ export declare type User = {
+         expandedSymbolPathsInSidebar?: [];
+         expandedTextStylePathsInPopover?: [];
+         libraryListCollapsed?: NumericalBool;
++        cloudShare?: object;
+     };
+     [key: string]: any;
+ };

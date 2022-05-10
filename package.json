@@ -4,6 +4,7 @@
   "description": "Sketch Fusion applies themes to Design System documents.",
   "main": "app.ts",
   "scripts": {
+    "postinstall": "patch-package",
     "start": "tsc && node app.js",
     "tool": "tsc && node tool.js",
     "basic": "tsc && node tool.js 0_source.sketch 1_theme.sketch 2_output.sketch",
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@types/adm-zip": "0.4.34",
     "@types/archiver": "5.3.1",
-    "@types/uuid": "8.3.4"
+    "@types/uuid": "8.3.4",
+    "patch-package": "^6.4.7"
   }
 }
