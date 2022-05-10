@@ -4,30 +4,42 @@ import { v4 as uuidv4 } from 'uuid'
 import { mergeDocuments } from './mergeDocuments'
 
 export async function mergeFiles(fileArray: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const sourceFile = fileArray[0]
     const themeFile = fileArray[1]
     const outputFile = fileArray[2]
 
-    let newOutputFile = false
-    if (!fs.existsSync(outputFile)) {
-      fs.copyFileSync(sourceFile, outputFile)
-      newOutputFile = true
+    const outputData = {
+      id: uuidv4().toUpperCase(),
+      filepath: outputFile,
+      cloudShare: null,
+      documentState: null,
     }
+
+    if (fs.existsSync(outputFile)) {
+      await fromFile(outputFile).then((file: SketchFile) => {
+        outputData.id = file.contents.document.do_objectID
+        if (file.contents.user.document?.cloudShare) {
+          outputData.cloudShare = JSON.parse(
+            JSON.stringify(file.contents.user.document?.cloudShare)
+          )
+        }
+        if (file.contents.document.documentState) {
+          outputData.documentState = JSON.parse(
+            JSON.stringify(file.contents.document.documentState)
+          )
+        }
+      })
+    }
+    // console.log('Output file data: ', outputData)
 
     fromFile(sourceFile).then((sourceDocument: SketchFile) => {
       fromFile(themeFile).then((themeDocument: SketchFile) => {
-        fromFile(outputFile).then((outputDocument: SketchFile) => {
-          if (newOutputFile) {
-            outputDocument.contents.document.do_objectID =
-              uuidv4().toUpperCase()
+        mergeDocuments(sourceDocument, themeDocument, outputData).then(
+          (output) => {
+            resolve(output)
           }
-          mergeDocuments(sourceDocument, themeDocument, outputDocument).then(
-            (output) => {
-              resolve(output)
-            }
-          )
-        })
+        )
       })
     })
   })
