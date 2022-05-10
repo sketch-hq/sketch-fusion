@@ -11,9 +11,9 @@ export async function mergeFiles(fileArray: string[]): Promise<string> {
 
     const outputData = {
       id: uuidv4().toUpperCase(),
-      fileName: outputFile,
-      cloudShare: {},
-      documentState: {},
+      filepath: outputFile,
+      cloudShare: null,
+      documentState: null,
     }
 
     if (fs.existsSync(outputFile)) {

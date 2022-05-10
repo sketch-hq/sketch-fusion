@@ -31,7 +31,7 @@ export async function mergeDocuments(
   themeDocument: SketchFile,
   outputOptions: {
     id: string
-    fileName: string
+    filepath: string
     documentState?: {}
     cloudShare?: {}
   }
@@ -45,11 +45,16 @@ export async function mergeDocuments(
 
   // Create a new document that is a copy of the source document...
   let outputDocument: SketchFile = JSON.parse(JSON.stringify(sourceDocument))
+
   // ...and store the data we got in the function call:
+  outputDocument.filepath = outputOptions.filepath
   outputDocument.contents.document.do_objectID = outputOptions.id
-  outputDocument.filepath = outputOptions.fileName
-  outputDocument.contents.user.document.cloudShare = outputOptions.cloudShare
-  outputDocument.contents.document.documentState = outputOptions.documentState
+  if (outputOptions.cloudShare) {
+    outputDocument.contents.user.document.cloudShare = outputOptions.cloudShare
+  }
+  if (outputOptions.documentState) {
+    outputDocument.contents.document.documentState = outputOptions.documentState
+  }
 
   // 1. Merge Colors
   console.log(`Step 1: 🎨 Merging Colors`)
@@ -101,6 +106,7 @@ export async function mergeDocuments(
           themeArtboard !== undefined &&
           themeArtboard._class === 'artboard'
         ) {
+          console.log(`Merging Artboard "${layer.name}"`)
           for (const property in layer) {
             if (layer.hasOwnProperty(property)) {
               layer[property] = themeArtboard[property]
