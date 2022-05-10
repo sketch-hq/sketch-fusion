@@ -106,7 +106,7 @@ export async function mergeDocuments(
           themeArtboard !== undefined &&
           themeArtboard._class === 'artboard'
         ) {
-          console.log(`Merging Artboard "${layer.name}"`)
+          // console.log(`Merging Artboard "${layer.name}"`)
           for (const property in layer) {
             if (layer.hasOwnProperty(property)) {
               layer[property] = themeArtboard[property]
@@ -369,7 +369,7 @@ export async function mergeDocuments(
             }
           })
           if (updateOverride) {
-            console.log(`\t⮑  Updating override "${override.overrideName}"`)
+            // console.log(`\t⮑  Updating override "${override.overrideName}"`)
             override.overrideName =
               overridePathComponents.join('/') + '_' + type
           }
@@ -387,12 +387,19 @@ export async function mergeDocuments(
       // Make a temp folder inside our uploads folder
       const tempFolder = path.resolve(__dirname, '../tmp/', uuidv4())
       fs.mkdirSync(tempFolder, { recursive: true })
+
       const sourceFolder = path.resolve(tempFolder, 'source')
+      const themeFolder = path.resolve(tempFolder, 'theme')
       const outputFolder = path.resolve(tempFolder, 'output')
+      fs.mkdirSync(outputFolder + '/fonts', { recursive: true })
+      fs.mkdirSync(outputFolder + '/images', { recursive: true })
 
       let needsToBeZipped = false
       const sourceZip = new AdmZip(sourceDocument.filepath)
       sourceZip.extractAllTo(sourceFolder, true)
+
+      const themeZip = new AdmZip(themeDocument.filepath)
+      themeZip.extractAllTo(themeFolder, true)
 
       const outputZip = new AdmZip(outputDocument.filepath)
       outputZip.extractAllTo(outputFolder, true)
@@ -410,6 +417,26 @@ export async function mergeDocuments(
           path.resolve(sourceFolder, 'images'),
           path.resolve(outputFolder, 'images')
         )
+      }
+      if (fs.existsSync(path.resolve(themeFolder, 'fonts'))) {
+        needsToBeZipped = true
+        const fontFiles = fs.readdirSync(path.resolve(themeFolder, 'fonts'))
+        fontFiles.forEach((file) => {
+          fs.copyFileSync(
+            path.resolve(themeFolder, 'fonts', file),
+            path.resolve(outputFolder, 'fonts', file)
+          )
+        })
+      }
+      if (fs.existsSync(path.resolve(themeFolder, 'images'))) {
+        needsToBeZipped = true
+        const imageFiles = fs.readdirSync(path.resolve(themeFolder, 'images'))
+        imageFiles.forEach((file) => {
+          fs.copyFileSync(
+            path.resolve(themeFolder, 'images', file),
+            path.resolve(outputFolder, 'images', file)
+          )
+        })
       }
 
       if (needsToBeZipped) {

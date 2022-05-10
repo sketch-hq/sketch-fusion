@@ -31,7 +31,7 @@ export async function mergeFiles(fileArray: string[]): Promise<string> {
         }
       })
     }
-    console.log('Output file data: ', outputData)
+    // console.log('Output file data: ', outputData)
 
     fromFile(sourceFile).then((sourceDocument: SketchFile) => {
       fromFile(themeFile).then((themeDocument: SketchFile) => {
