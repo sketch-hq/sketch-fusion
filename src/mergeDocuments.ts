@@ -51,9 +51,13 @@ export async function mergeDocuments(
   outputDocument.contents.document.do_objectID = outputOptions.id
   if (outputOptions.cloudShare) {
     outputDocument.contents.user.document.cloudShare = outputOptions.cloudShare
+  } else {
+    delete outputDocument.contents.user.document.cloudShare
   }
   if (outputOptions.documentState) {
     outputDocument.contents.document.documentState = outputOptions.documentState
+  } else {
+    delete outputDocument.contents.document.documentState
   }
 
   // 1. Merge Colors
