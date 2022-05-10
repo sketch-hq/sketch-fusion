@@ -1,5 +1,4 @@
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
-import { options } from './mergeDocuments'
 
 export function mergeColors(
   sourceColors: FileFormat.SwatchContainer,
@@ -18,10 +17,7 @@ export function mergeColors(
     if (matchingColor) {
       const originalColor =
         combinedColors.objects[combinedColors.objects.indexOf(matchingColor)]
-      if (options.reuseStyleID) {
-        const originalID = originalColor.do_objectID
-        themeColor.do_objectID = originalID
-      }
+      themeColor.do_objectID = originalColor.do_objectID
       combinedColors.objects[combinedColors.objects.indexOf(matchingColor)] =
         themeColor
     } else {

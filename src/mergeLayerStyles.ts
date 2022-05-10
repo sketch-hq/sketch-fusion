@@ -1,5 +1,4 @@
 import FileFormat from '@sketch-hq/sketch-file-format-ts'
-import { options } from './mergeDocuments'
 
 export function mergeLayerStyles(
   sourceStyles: FileFormat.SharedStyleContainer,
@@ -21,14 +20,10 @@ export function mergeLayerStyles(
     )
     // If the style is already in the source document, we'll replace it...
     if (matchingStyle) {
-      // TODO: use the implementation from mergeTextStyles
-      if (options.reuseStyleID) {
-        const originalStyle =
-          combinedStyles.objects[combinedStyles.objects.indexOf(matchingStyle)]
-        const originalID = originalStyle.do_objectID
-        // We want to use the same ID as the original style
-        themeStyle.do_objectID = originalID
-      }
+      const originalStyle =
+        combinedStyles.objects[combinedStyles.objects.indexOf(matchingStyle)]
+      // We want to use the same ID as the original style
+      themeStyle.do_objectID = originalStyle.do_objectID
       combinedStyles.objects[combinedStyles.objects.indexOf(matchingStyle)] =
         themeStyle
     } else {

@@ -18,8 +18,6 @@ app.listen(port, () => {
   console.log(`Listening on http://localhost:${port}`)
 })
 
-// const options = require(path.resolve(__dirname, 'config.json'))
-
 app.post('/upload', (req, res) => {
   if (!req.files || Object.keys(req.files).length < 2) {
     res.status(400).send('You need to upload at least 2 files.')

@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { allLayers, allTextLayers, sublayers } from './allLayers'
 import { allSymbolInstances } from './allSymbolInstances'
-import { allSymbolMasters, allSymbolMastersWithPage } from './allSymbolMasters'
+import { allSymbolMastersWithPage } from './allSymbolMasters'
 import { cleanupColorsInLayer } from './cleanupColorsInLayer'
 import { colorsAreEqual } from './colorsAreEqual'
 import { getElementByID } from './getElementByID'
@@ -16,14 +16,12 @@ import { getElementByName } from './getElementByName'
 import { getSymbolMaster } from './getSymbolMaster'
 import { injectDynamicData } from './injectDynamicData'
 import { injectSymbol } from './injectSymbol'
-import { matchingLayerStyle } from './matchingLayerStyle'
 import { matchingSwatchForColorInSwatches } from './matchingSwatchForColorInSwatches'
 import { mergeColors } from './mergeColors'
 import { mergeLayerStyles } from './mergeLayerStyles'
 import { mergeTextStyles } from './mergeTextStyles'
 import { resetStyle } from './resetStyle'
 
-export const options = require(path.resolve(__dirname, '../config.json'))
 const data = require(path.resolve(__dirname, '../data.json'))
 
 export async function mergeDocuments(
