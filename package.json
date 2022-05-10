@@ -1,6 +1,6 @@
 {
   "name": "sketch-fusion",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Sketch Fusion applies themes to Design System documents.",
   "main": "app.ts",
   "scripts": {
