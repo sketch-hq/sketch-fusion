@@ -81,15 +81,6 @@ export async function mergeDocuments(
 
   // 4. Merge Symbols
   console.log(`Step 4: 💠 Merging Symbols`)
-  // First, inject the symbols from the source document, as they may have changed:
-  allSymbolMastersWithPage(sourceDocument).forEach((symbolObject) => {
-    outputDocument = injectSymbol(
-      symbolObject.symbol,
-      outputDocument,
-      symbolObject.page.name
-    )
-  })
-  // Then, inject the symbols from the theme document:
   allSymbolMastersWithPage(themeDocument).forEach((symbolObject) => {
     outputDocument = injectSymbol(
       symbolObject.symbol,

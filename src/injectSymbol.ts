@@ -15,26 +15,27 @@ export function injectSymbol(
 
   // Replace the existing symbol with the new one
   let foundSymbol = false
-  allSymbolMasters(document).forEach((symbolMaster) => {
-    if (symbolMaster.name === newSymbol.name) {
-      // We will replace the existing symbol with the new one,
-      // so we need to use the new symbol in all of the symbol instances
-      allSymbolInstances(document).forEach((symbolInstance) => {
-        if (symbolInstance.symbolID === symbolMaster.symbolID) {
-          symbolInstance.symbolID = newSymbol.symbolID
-        }
-      })
-      // Finally, update all prperties of the symbol master
-      newSymbol.frame.x = symbolMaster.frame.x
-      newSymbol.frame.y = symbolMaster.frame.y
-      for (const property in symbolMaster) {
-        if (symbolMaster.hasOwnProperty(property)) {
-          symbolMaster[property] = newSymbol[property]
-        }
-      }
-      foundSymbol = true
-    }
+  const symbolMaster = allSymbolMasters(document).find((symbol) => {
+    return symbol.name === newSymbol.name
   })
+  if (symbolMaster) {
+    // We will replace the existing symbol with the new one,
+    // so we need to use the new symbol in all of the symbol instances
+    allSymbolInstances(document).forEach((symbolInstance) => {
+      if (symbolInstance.symbolID === symbolMaster.symbolID) {
+        symbolInstance.symbolID = newSymbol.symbolID
+      }
+    })
+    // Finally, update all prperties of the symbol master
+    newSymbol.frame.x = symbolMaster.frame.x
+    newSymbol.frame.y = symbolMaster.frame.y
+    for (const property in symbolMaster) {
+      if (symbolMaster.hasOwnProperty(property)) {
+        symbolMaster[property] = newSymbol[property]
+      }
+    }
+    foundSymbol = true
+  }
 
   // If we didn't find the symbol, add it to the document
   if (!foundSymbol) {
