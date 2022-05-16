@@ -72,7 +72,10 @@ app.post('/upload', (req, res) => {
                 path.resolve(fuseFolder, `output-${Date.now()}.sketch`)
               )
               mergeFiles(filesToMerge).then((filepath) => {
-                res.download(filepath)
+                res.download(filepath, () => {
+                  // Delete the folder after we're done
+                  fs.rmdirSync(fuseFolder, { recursive: true })
+                })
               })
             }
           }
