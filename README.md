@@ -27,3 +27,10 @@ To use Sketch Fusion, you need these files:
 ## Replacing Workspace documents
 
 To replace an existing Workspace document, open the output from Fusion in Sketch and click the "Collaborate" icon. Sketch will ask if you want to overwrite an existing Workspace document. Select the document you want to overwrite, and Sketch will replace the document in the Workspace with your new version.
+
+## Known Issues
+
+If you run Fusion on a server with `mod_security` enabled, you may experience a "500 Internal Server Error". This happens if your filenames include emoji characters. The two workarounds we have identified are to:
+
+- Disabling `mod_security` in the server configuration
+- Using a different filename for the document(s)
