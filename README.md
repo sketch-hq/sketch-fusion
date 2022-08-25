@@ -5,6 +5,10 @@ To do this, it replaces styles, colors or symbols in a source document with thos
 
 We have a demo running at [https://fusion.sketchplugins.com](https://fusion.sketchplugins.com) if you want to try it out without installing anything.
 
+## Disclaimer
+
+While we've tried to make sure Sketch Fusion works for most themeing scenarios, it is not meant to be a complete solution. Depending on your use case, you may need to implement your own logic to handle the different scenarios. We've added comments in the code to help you get started, and are always happy to help you if you need a hand. Reach out to your Sketch CSM, or get in touch with us at developer@sketch.com if you want to customize Sketch Fusion.
+
 ## Requirements and Setup
 
 Sketch Fusion works on any system with `node.js` installed, and does not need Sketch installed. You can even run it on GitHub Actions using the template provided in `.github/workflows/fusion.yml`.
